@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tech4U App</title>
+  <meta name="description" content="Tech4U interactive prototype, a mobile learning app designed with accessibility and inclusivity in mind.">
+  <link rel="icon" type="image/jpeg" href="../profile.jpg">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #D7E5D4; /* Desktop background matching the screenshot border */
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root {
+      width: 390px; height: 100vh; max-height: 844px;
+      background: #191919; /* App background */
+      overflow: hidden; position: relative;
+    }
+    @media (min-width: 500px) {
+      #root {
+        border-radius: 54px;
+        box-shadow: 0 0 0 12px #2A2A2A, 0 48px 96px rgba(0,0,0,0.5);
+      }
+    }
+    @media (max-width: 499px) {
+      body { background: #191919; align-items: flex-start; }
+      #root { width: 100vw; max-height: none; height: 100dvh; border-radius: 0; }
+    }
+    ::-webkit-scrollbar { display: none; }
+    * { scrollbar-width: none; -ms-overflow-style: none; }
+    input, button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+    button, [role="button"] { transition: transform 0.1s ease, filter 0.1s ease; }
+    button:active, [role="button"]:active { transform: scale(0.96); filter: brightness(0.9); }
+    input[type=range] { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 99px; outline: none; cursor: pointer; background: #333; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #fff; cursor: pointer; }
+    
+    /* Utilities for the flat bold style */
+    .uppercase-heading { text-transform: uppercase; letter-spacing: -0.02em; font-weight: 800; }
+    
+    /* Animations & Glassmorphism */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up { animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .glass-nav {
+      background: rgba(25, 25, 25, 0.7) !important;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .hover-card { transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+    .hover-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.3); }
+  </style>
+</head>
+<body>
+<!-- Back to Case Study Button -->
+<a href="tech4u-cs.html" style="position: absolute; top: 24px; left: 24px; background: #191919; color: #ffffff; padding: 12px 24px; border-radius: 99px; text-decoration: none; font-weight: 800; font-size: 14px; display: flex; align-items: center; gap: 8px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  Back to Case Study
+</a>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ─── Palette & tokens ─────────────────────────────────────────── */
+const T = {
+  bg:     '#191919',
+  card:   '#242424',
+  border: '#333333',
+  text:   '#FFFFFF',
+  textDark: '#121212',
+  muted:  '#8F8F8F',
+  
+  /* Vibrant Flat Colors from Screenshot */
+  purple: '#7C67FF',
+  coral:  '#FF655B',
+  yellow: '#FFD56B',
+  green:  '#D7E5D4',
+  blue:   '#80D8FF',
+};
+
+/* ─── Data ─────────────────────────────────────────────────────── */
+const CATS = ['ALL','WEB DEV','AI/ML','CYBER','DATA SCI','MOBILE','UX'];
+
+const COURSES = [
+  { id:1, title:'REACT FUNDAMENTALS', instructor:'Sarah Chen', duration:'12h', level:'Beginner', progress:45, category:'WEB DEV', color:T.purple, textColor:T.text,
+    desc:'Build real-world apps with React. Hooks, state management, context, routing.', chapters:['Intro to React','Components & Props','State & Hooks','Context API','React Router','Final Project'] },
+  { id:2, title:'MACHINE LEARNING BASICS', instructor:'Marcus Johnson', duration:'18h', level:'Intermediate', progress:0, category:'AI/ML', color:T.coral, textColor:T.textDark,
+    desc:'Understand how machines learn from data. Covers regression, classification, neural networks.', chapters:['Python Review','Data Prep','Linear Regression','Decision Trees','Neural Nets','Deploying Models'] },
+  { id:3, title:'ETHICAL HACKING 101', instructor:'Priya Sharma', duration:'24h', level:'Advanced', progress:20, category:'CYBER', color:T.yellow, textColor:T.textDark,
+    desc:'Learn how professionals find and fix vulnerabilities. Hands-on labs in a safe environment.', chapters:['Network Basics','Reconnaissance','Scanning','Exploitation','Post-Exploitation','Report Writing'] },
+  { id:4, title:'PYTHON FOR DATA SCIENCE', instructor:'Carlos Rivera', duration:'15h', level:'Beginner', progress:70, category:'DATA SCI', color:T.green, textColor:T.textDark,
+    desc:'Master pandas, NumPy, matplotlib, and scikit-learn. From raw data to insights.', chapters:['Python Basics','NumPy Arrays','Pandas DataFrames','Data Viz','ML Intro','Capstone'] },
+  { id:5, title:'IOS DEVELOPMENT', instructor:'Aisha Okonkwo', duration:'20h', level:'Intermediate', progress:0, category:'MOBILE', color:T.blue, textColor:T.textDark,
+    desc:'Build polished iOS apps with Swift and SwiftUI. Ship your first app.', chapters:['Swift Basics','UIKit Foundations','SwiftUI','Networking','CoreData','App Store Launch'] },
+  { id:6, title:'UX RESEARCH METHODS', instructor:'Lin Wei', duration:'10h', level:'Beginner', progress:100, category:'UX', color:T.card, textColor:T.text,
+    desc:'Uncover user needs through interviews, usability tests, and synthesis frameworks.', chapters:['Research Planning','User Interviews','Usability Tests','Card Sorting','Synthesis','Presenting Findings'] },
+];
+
+const INSTRUCTORS = [
+  { name:'Sarah Chen',    spec:'WEB DEV',   rating:4.9, color:T.purple },
+  { name:'Marcus Johnson',spec:'AI/ML',     rating:4.8, color:T.coral },
+  { name:'Priya Sharma',  spec:'SECURITY',  rating:4.9, color:T.yellow },
+  { name:'Carlos Rivera', spec:'DATA SCI',  rating:4.7, color:T.green },
+];
+
+/* ─── Shared primitives ────────────────────────────────────────── */
+
+function ProgressBar({ value, bg = 'rgba(0,0,0,0.15)', fill = T.textDark, height = 6 }) {
+  return (
+    <div style={{ width:'100%', height, background:bg, borderRadius:99, overflow:'hidden' }}>
+      <div style={{ width:`${Math.min(100,value)}%`, height:'100%', background:fill, borderRadius:99, transition:'width .6s ease' }} />
+    </div>
+  );
+}
+
+function Toggle({ value, onChange, color = T.purple }) {
+  return (
+    <div onClick={() => onChange(!value)} tabIndex={0} role="switch" aria-checked={value} 
+      style={{ width:52, height:32, borderRadius:16, background: value ? color : T.card,
+        position:'relative', cursor:'pointer', transition:'background .2s', flexShrink:0 }}>
+      <div style={{ width:24, height:24, borderRadius:'50%', background:'#fff',
+        position:'absolute', top:4, left: value ? 24 : 4, transition:'left .2s ease' }} />
+    </div>
+  );
+}
+
+function BackBtn({ onPress, label = '' }) {
+  return (
+    <button onClick={onPress} style={{ display:'flex', alignItems:'center', gap:8,
+      background:T.text, border:'none', color:T.textDark, borderRadius:99, cursor:'pointer', padding:'8px', width:36, height:36, justifyContent:'center' }}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+  );
+}
+
+function PillButton({ label, onPress, color, textColor, icon }) {
+  return (
+    <button onClick={onPress} style={{ width:'100%', padding:'18px 24px', borderRadius:24, background:color, color:textColor, border:'none', fontSize:15, fontWeight:800, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', textTransform:'uppercase' }}>
+      {label}
+      {icon || <div style={{ width:28, height:28, borderRadius:'50%', background:textColor, color:color, display:'flex', alignItems:'center', justifyContent:'center' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>}
+    </button>
+  );
+}
+
+function CourseCard({ course, onPress }) {
+  const done = course.progress === 100;
+  return (
+    <div onClick={onPress} className="hover-card" role="button" style={{ background:course.color, borderRadius:24, padding:'24px', cursor:'pointer', display:'flex', flexDirection:'column', gap:16, position:'relative' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+        <div style={{ background: course.textColor === T.textDark ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)', padding:'6px 12px', borderRadius:99, fontSize:11, fontWeight:800, color:course.textColor, letterSpacing:0.5 }}>
+          {course.category}
+        </div>
+        <div style={{ width:32, height:32, borderRadius:'50%', background:course.textColor, color:course.color, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      
+      <div>
+        <h3 style={{ fontSize:22, fontWeight:800, color:course.textColor, letterSpacing:-0.5, lineHeight:1.1, textTransform:'uppercase' }}>{course.title}</h3>
+      </div>
+      
+      {course.progress > 0 ? (
+        <div>
+          <ProgressBar value={course.progress} bg={course.textColor === T.textDark ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)'} fill={course.textColor} height={6} />
+        </div>
+      ) : (
+        <div style={{ fontSize:13, fontWeight:600, color:course.textColor, opacity:0.8 }}>Not started</div>
+      )}
+      {done && <span style={{ position:'absolute', bottom:24, right:24, fontSize:24 }}>🏆</span>}
+    </div>
+  );
+}
+
+/* ─── Welcome / Onboarding ─────────────────────────────────────── */
+function WelcomeScreen({ go }) {
+  const [step, setStep] = useState(0);
+  const slides = [
+    { title:'LEARN AT YOUR PACE', sub:'Expert-led tech courses that seamlessly fit into your life.', color:T.green, textColor:T.textDark },
+    { title:'THE SOFT PROGRAM', sub:'Take up to 9 low-pressure days a month. Zero guilt. Zero stress.', color:T.purple, textColor:T.text },
+  ];
+  const s = slides[step];
+  
+  return (
+    <div style={{ height:'100%', background:s.color, transition:'background 0.3s', display:'flex', flexDirection:'column', padding:'48px 24px' }}>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center' }}>
+        <h2 style={{ fontSize:42, fontWeight:900, color:s.textColor, textTransform:'uppercase', lineHeight:1, letterSpacing:-1.5, marginBottom:16 }}>
+          {s.title}
+        </h2>
+        <p style={{ fontSize:18, fontWeight:500, color:s.textColor, opacity:0.8, lineHeight:1.4 }}>
+          {s.sub}
+        </p>
+      </div>
+
+      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        <div style={{ display:'flex', gap:8, marginBottom:24, justifyContent:'center' }}>
+          {slides.map((_,i) => <div key={i} style={{ width: i===step?24:8, height:8, borderRadius:4, background:s.textColor, opacity: i===step?1:0.3, transition:'all .3s' }} />)}
+        </div>
+        
+        {step < 1
+          ? <PillButton label="NEXT" onPress={() => setStep(step+1)} color={s.textColor} textColor={s.color} />
+          : <PillButton label="GET STARTED" onPress={() => go('login')} color={s.textColor} textColor={s.color} />}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Login / Signup ───────────────────────────────────────────── */
+function LoginScreen({ go, updateUser }) {
+  const params = new URLSearchParams(window.location.search);
+  const [mode, setMode] = useState(params.get('loginMode') || 'login');
+  const [name, setName] = useState('');
+  const inp = { width:'100%', padding:'20px 24px', borderRadius:24, background:T.card, border:'none', color:T.text, fontSize:16, fontWeight:600, outline:'none' };
+  
+  return (
+    <div style={{ height:'100%', background:T.bg, display:'flex', flexDirection:'column', padding:'48px 24px' }}>
+      <h2 style={{ fontSize:36, fontWeight:900, color:T.text, textTransform:'uppercase', letterSpacing:-1, marginBottom:40 }}>
+        {mode==='login' ? 'WELCOME BACK' : 'CREATE ACCOUNT'}
+      </h2>
+      
+      <div style={{ display:'flex', flexDirection:'column', gap:16, flex:1 }}>
+        {mode==='signup' && <input style={inp} placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} />}
+        <input style={inp} type="email" placeholder="Email Address" defaultValue="alex@example.com" />
+        <input style={inp} type="password" placeholder="Password" />
+        
+        <div style={{ marginTop:24 }}>
+          <PillButton label={mode==='login' ? 'SIGN IN' : 'JOIN NOW'} onPress={() => { if (name) updateUser('name', name); go('home'); }} color={T.purple} textColor={T.text} />
+        </div>
+        
+        <div style={{ display:'flex', alignItems:'center', gap:12, margin:'16px 0' }}>
+          <div style={{ flex:1, height:1, background:T.border }} />
+          <span style={{ color:T.muted, fontSize:12, fontWeight:700 }}>OR</span>
+          <div style={{ flex:1, height:1, background:T.border }} />
+        </div>
+        
+        <button onClick={() => { updateUser('name', 'Google User'); go('home'); }} className="hover-card" style={{ width:'100%', padding:'18px 24px', borderRadius:24, background:'#FFFFFF', color:'#000000', border:'none', fontSize:15, fontWeight:800, cursor:'pointer', display:'flex', justifyContent:'center', alignItems:'center', gap:12, textTransform:'uppercase' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          CONTINUE WITH GOOGLE
+        </button>
+        
+        <button onClick={() => setMode(mode==='login'?'signup':'login')} style={{ background:'none', border:'none', color:T.muted, fontSize:14, fontWeight:600, cursor:'pointer', marginTop:16 }}>
+          {mode==='login' ? 'First time here? Create an account' : 'Already have an account? Sign in'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Bottom Nav ───────────────────────────────────────────────── */
+const NAV = [
+  { id:'home',    label:'HOME',     icon:<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2zM9 22V12h6v10"/> },
+  { id:'search',  label:'SEARCH',   icon:<path d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/> },
+  { id:'courses', label:'LEARN',    icon:<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15Z"/> },
+  { id:'profile', label:'PROFILE',  icon:<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z"/> },
+];
+
+function BottomNav({ tab, setTab, user }) {
+  return (
+    <div className="glass-nav" style={{ height:80, position: 'absolute', bottom: 0, width: '100%', display:'flex', alignItems:'center', justifyContent:'space-around', padding:'0 16px', zIndex:100 }}>
+      {user?.softMode && (
+        <div style={{ position:'absolute', top:-12, background:T.purple, color:T.text, fontSize:10, fontWeight:800, padding:'4px 12px', borderRadius:99, letterSpacing:0.5, boxShadow:'0 4px 12px rgba(0,0,0,0.3)', border:`2px solid ${T.bg}` }}>
+          SOFT MODE ACTIVE
+        </div>
+      )}
+      {NAV.map(item => {
+        const active = tab === item.id;
+        return (
+          <button key={item.id} onClick={() => setTab(item.id)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', padding:'8px' }}>
+            <div style={{ width:56, height:36, borderRadius:18, background: active ? T.card : 'transparent', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? T.text : T.muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                {item.icon}
+              </svg>
+            </div>
+            {/* <span style={{ fontSize:10, color:active ? T.text : T.muted, fontWeight:800 }}>{item.label}</span> */}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Home ─────────────────────────────────────────────────────── */
+function HomeScreen({ go, user, selectedCat, setSelectedCat }) {
+  const featured = COURSES[0]; // React
+  const capacityCourse = COURSES[1]; // ML
+  const courses = selectedCat === 'ALL' ? COURSES.slice(2) : COURSES.filter(c => c.category === selectedCat);
+
+  return (
+    <div style={{ height:'100%', overflowY:'auto' }}>
+      {/* Header */}
+      <div style={{ padding:'48px 24px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ width:48, height:48, borderRadius:'50%', background:T.card, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <img src="logo.jpg?v=2" alt="Logo" style={{ width:24, height:24, borderRadius:6, objectFit:'cover' }} onError={(e) => e.target.style.display='none'} />
+          </div>
+          <h2 style={{ fontSize:20, fontWeight:800, color:T.text, letterSpacing:-0.5, textTransform:'uppercase' }}>HI, {user.name.split(' ')[0]}!</h2>
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          <button style={{ width:44, height:44, borderRadius:'50%', background:T.text, color:T.textDark, border:'none', display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => go('search')}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Featured / Alert Card (Mimicking STABILIZING LABOR COST) */}
+      <div style={{ margin:'0 24px 16px', borderRadius:28, background:T.card, padding:'24px', display:'flex', gap:16, alignItems:'center', cursor:'pointer' }} onClick={() => go('course', featured)}>
+        <div style={{ width:48, height:48, borderRadius:'50%', background:T.yellow, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.textDark} strokeWidth="3" strokeLinecap="round"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div style={{ flex:1 }}>
+          <h3 style={{ fontSize:18, fontWeight:900, color:T.text, textTransform:'uppercase', lineHeight:1.1, marginBottom:6 }}>CONTINUE<br/>REACT DEV</h3>
+          <p style={{ fontSize:12, color:T.muted, fontWeight:500 }}>Module ends in <span style={{ color:T.yellow }}>2:59:12</span> hours.</p>
+        </div>
+        <div style={{ width:36, height:36, borderRadius:'50%', background:T.text, color:T.textDark, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+
+      {/* Massive Colored Card (Mimicking VENUE CAPACITY) */}
+      <div style={{ margin:'0 24px 24px', borderRadius:32, background:T.purple, padding:'24px', cursor:'pointer', position:'relative', minHeight:280, display:'flex', flexDirection:'column' }} onClick={() => go('course', capacityCourse)}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+          <h2 style={{ fontSize:28, fontWeight:900, color:T.text, textTransform:'uppercase', lineHeight:1 }}>{capacityCourse.title.split(' ')[0]}<br/>{capacityCourse.title.split(' ').slice(1).join(' ')}</h2>
+          <div style={{ background:'rgba(0,0,0,0.1)', padding:'8px 16px', borderRadius:99, fontSize:12, fontWeight:800, color:T.text }}>
+            IN PROGRESS
+          </div>
+        </div>
+        
+        <div style={{ flex:1 }} />
+        
+        {/* Mock Chart Area */}
+        <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', height:100, marginBottom:24, opacity:0.8 }}>
+           <div style={{ width:'12%', background:T.text, height:'40%', borderRadius:'4px 4px 0 0' }} />
+           <div style={{ width:'12%', background:T.text, height:'70%', borderRadius:'4px 4px 0 0' }} />
+           <div style={{ width:'12%', background:T.text, height:'100%', borderRadius:'4px 4px 0 0' }} />
+           <div style={{ width:'12%', background:T.text, height:'60%', borderRadius:'4px 4px 0 0' }} />
+           <div style={{ width:'12%', background:T.text, height:'30%', borderRadius:'4px 4px 0 0' }} />
+           <div style={{ width:'12%', background:T.text, height:'85%', borderRadius:'4px 4px 0 0' }} />
+           <div style={{ width:'12%', background:T.text, height:'50%', borderRadius:'4px 4px 0 0' }} />
+        </div>
+        
+        <div style={{ background:T.card, borderRadius:99, padding:'8px', display:'flex', justifyContent:'space-around' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:12, height:12, borderRadius:'50%', background:T.coral }} /> <span style={{ fontSize:11, fontWeight:700, color:T.text }}>ML</span></div>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:12, height:12, borderRadius:'50%', background:T.yellow }} /> <span style={{ fontSize:11, fontWeight:700, color:T.text }}>AI</span></div>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:12, height:12, borderRadius:'50%', background:T.green }} /> <span style={{ fontSize:11, fontWeight:700, color:T.text }}>Data</span></div>
+        </div>
+      </div>
+
+      {/* Categories */}
+      <div style={{ position: 'relative' }}>
+        <div style={{ overflowX:'auto', paddingLeft:24, paddingRight:24, marginBottom:24, display:'flex', gap:8, maskImage: 'linear-gradient(to right, black 85%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent 100%)' }}>
+          {CATS.map(cat => (
+            <button key={cat} onClick={() => setSelectedCat(cat)} style={{ flexShrink:0, padding:'12px 20px', borderRadius:99, background:selectedCat===cat ? T.text : T.card, color:selectedCat===cat ? T.textDark : T.text, fontSize:13, fontWeight:800, cursor:'pointer', border:'none' }}>
+              {cat}
+            </button>
+          ))}
+          <div style={{ width:16, flexShrink:0 }} />
+        </div>
+      </div>
+
+      {/* Course list */}
+      <div style={{ padding:'0 24px', display:'flex', flexDirection:'column', gap:16 }}>
+        {courses.map(c => <CourseCard key={c.id} course={c} onPress={() => go('course', c)} />)}
+      </div>
+      <div style={{ height:32 }} />
+    </div>
+  );
+}
+
+/* ─── Search ───────────────────────────────────────────────────── */
+function SearchScreen({ go }) {
+  const [q, setQ] = useState('');
+  const results = q ? COURSES.filter(c => c.title.toLowerCase().includes(q.toLowerCase()) || c.category.toLowerCase().includes(q.toLowerCase())) : COURSES;
+  
+  return (
+    <div style={{ height:'100%', overflowY:'auto' }}>
+      <div style={{ padding:'48px 24px 24px' }}>
+        <h2 style={{ fontSize:32, fontWeight:900, color:T.text, marginBottom:24, textTransform:'uppercase' }}>SEARCH</h2>
+        <div style={{ position:'relative' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.textDark} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ position:'absolute', left:20, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="COURSES, TOPICS..." style={{ width:'100%', padding:'20px 20px 20px 56px', borderRadius:99, background:T.text, border:'none', color:T.textDark, fontSize:15, fontWeight:800, outline:'none' }} />
+        </div>
+      </div>
+      <div style={{ padding:'0 24px', display:'flex', flexDirection:'column', gap:16 }}>
+        {results.map(c => <CourseCard key={c.id} course={c} onPress={() => go('course', c)} />)}
+      </div>
+      <div style={{ height:32 }} />
+    </div>
+  );
+}
+
+/* ─── My Courses (Learn) ───────────────────────────────────────── */
+function MyCoursesScreen({ go, user }) {
+  const enrolled = COURSES.filter(c => user.enrolled.includes(c.id));
+  return (
+    <div style={{ height:'100%', overflowY:'auto' }}>
+      <div style={{ padding:'48px 24px 24px' }}>
+        <h2 style={{ fontSize:32, fontWeight:900, color:T.text, textTransform:'uppercase' }}>MY LEARN</h2>
+      </div>
+      <div style={{ padding:'0 24px', display:'flex', flexDirection:'column', gap:16 }}>
+        {enrolled.map(c => <CourseCard key={c.id} course={c} onPress={() => go('learn', c)} />)}
+        {enrolled.length === 0 && (
+          <div style={{ padding:'40px 24px', textAlign:'center', background:T.card, borderRadius:32 }}>
+            <p style={{ fontSize:16, fontWeight:700, color:T.muted }}>NO COURSES YET</p>
+          </div>
+        )}
+      </div>
+      <div style={{ height:32 }} />
+    </div>
+  );
+}
+
+/* ─── Profile ──────────────────────────────────────────────────── */
+function ProfileScreen({ go, user, updateUser }) {
+  const enrolled = COURSES.filter(c => user.enrolled.includes(c.id));
+  const avgProg = enrolled.length ? Math.round(enrolled.reduce((a,c) => a+c.progress, 0) / enrolled.length) : 0;
+  
+  return (
+    <div style={{ height:'100%', overflowY:'auto' }}>
+      <div style={{ padding:'48px 24px 24px' }}>
+        <h2 style={{ fontSize:32, fontWeight:900, color:T.text, textTransform:'uppercase', marginBottom:24 }}>PROFILE</h2>
+        
+        {/* User Card */}
+        <div style={{ background:T.coral, borderRadius:32, padding:24, display:'flex', alignItems:'center', gap:16, marginBottom:16 }}>
+          <div style={{ width:72, height:72, borderRadius:'50%', background:T.textDark, display:'flex', alignItems:'center', justifyContent:'center', fontSize:32, fontWeight:900, color:T.coral, flexShrink:0 }}>{user.name[0]}</div>
+          <div>
+            <h2 style={{ fontSize:24, fontWeight:900, color:T.textDark, textTransform:'uppercase' }}>{user.name}</h2>
+            <p style={{ fontSize:14, fontWeight:700, color:T.textDark, opacity:0.8 }}>{user.techLevel}</p>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display:'flex', gap:16, marginBottom:32 }}>
+          <div style={{ flex:1, background:T.green, borderRadius:24, padding:20, color:T.textDark }}>
+            <p style={{ fontSize:36, fontWeight:900 }}>{enrolled.length}</p>
+            <p style={{ fontSize:12, fontWeight:800 }}>ENROLLED</p>
+          </div>
+          <div style={{ flex:1, background:T.yellow, borderRadius:24, padding:20, color:T.textDark }}>
+            <p style={{ fontSize:36, fontWeight:900 }}>{avgProg}%</p>
+            <p style={{ fontSize:12, fontWeight:800 }}>AVERAGE</p>
+          </div>
+        </div>
+
+        {/* Settings */}
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {[
+            { l:'ACCESSIBILITY', s:'VISUAL, PREFERENCES', a:() => go('accessibility'), c:T.card },
+            { l:'SOFT PROGRAM',  s:user.softMode ? 'ACTIVE' : 'INACTIVE', a:() => go('softprogram'), c:T.card },
+            { l:'TECH BG',       s:user.techLevel, a:() => go('techbg'), c:T.card },
+          ].map((item) => (
+            <button key={item.l} onClick={item.a} style={{ width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', padding:'24px', background:item.c, borderRadius:24, border:'none', cursor:'pointer' }}>
+              <div style={{ textAlign:'left' }}>
+                <p style={{ fontSize:18, color:T.text, fontWeight:800 }}>{item.l}</p>
+                <p style={{ fontSize:12, color:T.muted, fontWeight:600, marginTop:4 }}>{item.s}</p>
+              </div>
+              <div style={{ width:40, height:40, borderRadius:'50%', background:T.bg, color:T.text, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Course Detail ────────────────────────────────────────────── */
+function CourseDetailScreen({ course, go, user, updateUser, back }) {
+  const enrolled = user.enrolled.includes(course.id);
+  const enroll = () => {
+    if (!enrolled) updateUser('enrolled', [...user.enrolled, course.id]);
+    go('learn', course);
+  };
+  
+  return (
+    <div style={{ height:'100%', background:T.bg, overflowY:'auto' }}>
+      {/* Massive Header */}
+      <div style={{ background:course.color, padding:'48px 24px 32px', borderBottomLeftRadius:32, borderBottomRightRadius:32, position:'relative' }}>
+        <BackBtn onPress={back} />
+        
+        <div style={{ marginTop:40 }}>
+          <div style={{ background: course.textColor === T.textDark ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)', padding:'8px 16px', borderRadius:99, fontSize:12, fontWeight:800, color:course.textColor, display:'inline-block', marginBottom:16 }}>
+            {course.category}
+          </div>
+          <h2 style={{ fontSize:40, fontWeight:900, color:course.textColor, textTransform:'uppercase', lineHeight:1, letterSpacing:-1, marginBottom:16 }}>
+            {course.title}
+          </h2>
+          <p style={{ fontSize:16, fontWeight:700, color:course.textColor, opacity:0.8 }}>
+            WITH {course.instructor.toUpperCase()}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ padding:'24px' }}>
+        {/* Stats */}
+        <div style={{ display:'flex', gap:12, marginBottom:24 }}>
+          {[{l:'DURATION',v:course.duration},{l:'LEVEL',v:course.level}].map(s => (
+            <div key={s.l} style={{ flex:1, background:T.card, borderRadius:20, padding:'16px', textAlign:'center' }}>
+              <p style={{ fontSize:18, fontWeight:900, color:T.text }}>{s.v}</p>
+              <p style={{ fontSize:11, color:T.muted, fontWeight:700, marginTop:4 }}>{s.l}</p>
+            </div>
+          ))}
+        </div>
+
+        <p style={{ fontSize:16, color:T.text, fontWeight:500, lineHeight:1.6, marginBottom:32 }}>{course.desc}</p>
+
+        <PillButton label={enrolled ? 'CONTINUE LEARNING' : 'ENROLL NOW'} onPress={enroll} color={course.color} textColor={course.textColor} />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Learn ────────────────────────────────────────────────────── */
+function LearnScreen({ course, go, user, updateUser, back }) {
+  const [activeChapter, setActiveChapter] = useState(0);
+  const doneCount = Math.floor(course.chapters.length * course.progress / 100);
+  
+  return (
+    <div style={{ height:'100%', background:T.bg, display:'flex', flexDirection:'column' }}>
+      {/* Header */}
+      <div style={{ padding:'48px 24px 16px', display:'flex', alignItems:'center', gap:16, flexShrink:0 }}>
+        <BackBtn onPress={back} />
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:14, fontWeight:800, color:course.color, textTransform:'uppercase' }}>{course.category}</p>
+          <p style={{ fontSize:20, fontWeight:900, color:T.text, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textTransform:'uppercase' }}>{course.title}</p>
+        </div>
+      </div>
+
+      {/* Video Placeholder */}
+      <div style={{ margin:'0 24px 24px', borderRadius:32, background:course.color, aspectRatio:'4/3', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
+        <button style={{ width:72, height:72, borderRadius:'50%', background:course.textColor, color:course.color, border:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+        <div style={{ position:'absolute', bottom:24, left:24, right:24, display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
+          <span style={{ fontSize:16, color:course.textColor, fontWeight:800 }}>CH {activeChapter+1}</span>
+          <span style={{ fontSize:14, color:course.textColor, fontWeight:700 }}>42:00</span>
+        </div>
+      </div>
+
+      {/* Chapters */}
+      <div style={{ flex:1, overflowY:'auto', padding:'0 24px 24px' }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+          {course.chapters.map((ch, i) => {
+            const active = i === activeChapter;
+            return (
+              <button key={i} onClick={() => setActiveChapter(i)} style={{ display:'flex', alignItems:'center', gap:16, padding:'20px', background: active ? T.card : 'transparent', borderRadius:24, border: active ? `2px solid ${course.color}` : `2px solid transparent`, cursor:'pointer', textAlign:'left' }}>
+                <div style={{ width:32, height:32, borderRadius:'50%', background: active ? course.color : T.card, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:900, color: active ? course.textColor : T.muted, flexShrink:0 }}>
+                  {i+1}
+                </div>
+                <span style={{ fontSize:15, fontWeight:700, color: active ? T.text : T.muted, flex:1, textTransform:'uppercase' }}>{ch}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Generic Settings Screens ─────────────────────────────────── */
+function GenericSettingScreen({ title, back, children }) {
+  return (
+    <div style={{ height:'100%', background:T.bg, overflowY:'auto', padding:'48px 24px 24px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:32 }}>
+        <BackBtn onPress={back} />
+        <h2 style={{ fontSize:28, fontWeight:900, color:T.text, textTransform:'uppercase' }}>{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function AccessibilityScreen({ go, user, updateUser, back }) {
+  return (
+    <GenericSettingScreen title="ACCESSIBILITY" back={back}>
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        <div style={{ background:T.card, padding:24, borderRadius:24, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div><p style={{ fontSize:16, fontWeight:800, color:T.text }}>HIGH CONTRAST</p></div>
+          <Toggle value={user.highContrast} onChange={v => updateUser('highContrast', v)} color={T.green} />
+        </div>
+        <div style={{ background:T.card, padding:24, borderRadius:24 }}>
+          <p style={{ fontSize:16, fontWeight:800, color:T.text, marginBottom:16 }}>TEXT SIZE</p>
+          <input type="range" min="1" max="3" value={user.textSize} onChange={e => updateUser('textSize', parseInt(e.target.value))} style={{ width:'100%' }} />
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:8, fontSize:12, color:T.muted, fontWeight:700 }}><span>A</span><span>A</span><span>A</span></div>
+        </div>
+      </div>
+    </GenericSettingScreen>
+  );
+}
+
+function SoftProgramScreen({ go, user, updateUser, back }) {
+  return (
+    <GenericSettingScreen title="SOFT PROGRAM" back={back}>
+      <div style={{ background:T.purple, padding:32, borderRadius:32, marginBottom:24 }}>
+        <h2 style={{ fontSize:24, fontWeight:900, color:T.text, textTransform:'uppercase', marginBottom:12 }}>LOW PRESSURE</h2>
+        <p style={{ fontSize:14, fontWeight:600, color:T.text, opacity:0.9, lineHeight:1.5 }}>
+          Enable 1-9 days per month where learning pacing slows down and deadlines vanish. No questions asked.
+        </p>
+      </div>
+      
+      <div style={{ background:T.card, padding:24, borderRadius:24, display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+        <p style={{ fontSize:18, fontWeight:900, color:T.text }}>ENABLE SOFT MODE</p>
+        <Toggle value={user.softMode} onChange={v => updateUser('softMode', v)} color={T.purple} />
+      </div>
+
+      {user.softMode && (
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          <div style={{ background:T.card, padding:24, borderRadius:24 }}>
+            <p style={{ fontSize:16, fontWeight:800, color:T.text, marginBottom:24 }}>MAX DAYS PER MONTH: {user.softDays}</p>
+            <input type="range" min="1" max="9" value={user.softDays} onChange={e => updateUser('softDays', parseInt(e.target.value))} style={{ width:'100%' }} />
+            <div style={{ display:'flex', justifyContent:'space-between', marginTop:8, fontSize:12, color:T.muted, fontWeight:700 }}><span>1</span><span>9</span></div>
+          </div>
+
+          <div style={{ background:T.card, padding:24, borderRadius:24 }}>
+            <p style={{ fontSize:16, fontWeight:800, color:T.text, marginBottom:16 }}>AUTO-ENABLE ON SPECIFIC DATES</p>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:8 }}>
+              {Array.from({length:31}, (_, i) => i + 1).map((day) => {
+                const isActive = (user.softDaysOfMonth || []).includes(day);
+                return (
+                  <button key={day} onClick={() => {
+                    const current = user.softDaysOfMonth || [];
+                    const next = isActive ? current.filter(d => d !== day) : [...current, day];
+                    updateUser('softDaysOfMonth', next);
+                  }} className="hover-card" style={{ aspectRatio:1, borderRadius:'50%', background: isActive ? T.purple : T.bg, color: isActive ? T.text : T.muted, border:'none', fontSize:12, fontWeight:800, cursor:'pointer' }}>
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+            <p style={{ fontSize:12, color:T.muted, marginTop:16, fontWeight:600, lineHeight:1.4 }}>
+              Select specific dates of the month to automatically turn on Soft Mode.
+            </p>
+          </div>
+        </div>
+      )}
+    </GenericSettingScreen>
+  );
+}
+
+function TechBgScreen({ go, user, updateUser, back }) {
+  const levels = ['Absolute Beginner', 'Some Experience', 'Professional'];
+  return (
+    <GenericSettingScreen title="TECH BG" back={back}>
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        {levels.map(l => (
+          <button key={l} onClick={() => updateUser('techLevel', l)} style={{ width:'100%', padding:'24px', background: user.techLevel === l ? T.yellow : T.card, borderRadius:24, border:'none', color: user.techLevel === l ? T.textDark : T.text, fontSize:16, fontWeight:800, textAlign:'left', textTransform:'uppercase', cursor:'pointer' }}>
+            {l}
+          </button>
+        ))}
+      </div>
+    </GenericSettingScreen>
+  );
+}
+
+/* ─── Main App ─────────────────────────────────────────────────── */
+function App() {
+  const params = new URLSearchParams(window.location.search);
+  const initialScreen = params.get('screen') || 'welcome';
+  const initialTab = params.get('tab') || 'home';
+  const initialCourseId = parseInt(params.get('courseId')) || null;
+  const initialCourse = initialCourseId ? COURSES.find(c => c.id === initialCourseId) : null;
+
+  const [screen, setScreen] = useState(initialScreen); // welcome, login, home, search, courses, profile, course, learn, etc.
+  const [hist, setHist] = useState([]);
+  const [tab, setTab] = useState(initialTab);
+  const [ctx, setCtx] = useState(initialCourse); // e.g. selected course
+  const [selectedCat, setSelectedCat] = useState('ALL');
+  
+  const [user, setUser] = useState({
+    name: params.get('userName') || 'Nora',
+    enrolled: params.get('enrolled') ? params.get('enrolled').split(',').map(Number) : [1,4,6],
+    softMode: params.has('softMode') ? params.get('softMode') === 'true' : true,
+    softDays: parseInt(params.get('softDays')) || 3,
+    techLevel: params.get('techLevel') || 'Absolute Beginner',
+    highContrast: params.get('highContrast') === 'true',
+    textSize: parseInt(params.get('textSize')) || 1
+  });
+
+  const updateUser = (k, v) => setUser(prev => ({ ...prev, [k]: v }));
+  
+  const go = (s, data = null) => {
+    if (['home','search','courses','profile'].includes(s)) {
+      setTab(s); setHist([]); setScreen(s); setCtx(data);
+    } else {
+      setHist(h => [...h, { screen, ctx }]);
+      setScreen(s); setCtx(data);
+    }
+  };
+  
+  const back = () => {
+    if (hist.length > 0) {
+      const pop = hist[hist.length - 1];
+      setHist(h => h.slice(0, -1));
+      setScreen(pop.screen); setCtx(pop.ctx);
+    } else { go('home'); }
+  };
+
+  useEffect(() => {
+    if (user.highContrast) document.documentElement.style.filter = 'contrast(1.2)';
+    else document.documentElement.style.filter = 'none';
+  }, [user.highContrast]);
+
+  useEffect(() => {
+    if (params.get('screenshotMode') === 'true') {
+      document.body.style.background = '#191919';
+      document.body.style.display = 'block';
+      const rootEl = document.getElementById('root');
+      if (rootEl) {
+        rootEl.style.width = '100vw';
+        rootEl.style.height = '100vh';
+        rootEl.style.maxHeight = 'none';
+        rootEl.style.borderRadius = '0';
+        rootEl.style.boxShadow = 'none';
+      }
+    }
+  }, []);
+
+  const showNav = ['home','search','courses','profile'].includes(screen);
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
+      <div key={screen} className="animate-fade-up" style={{ flex:1, minHeight:0, position:'relative' }}>
+        {screen === 'welcome' && <WelcomeScreen go={go} />}
+        {screen === 'login' && <LoginScreen go={go} updateUser={updateUser} />}
+        {screen === 'home' && <HomeScreen go={go} user={user} selectedCat={selectedCat} setSelectedCat={setSelectedCat} />}
+        {screen === 'search' && <SearchScreen go={go} />}
+        {screen === 'courses' && <MyCoursesScreen go={go} user={user} />}
+        {screen === 'profile' && <ProfileScreen go={go} user={user} updateUser={updateUser} />}
+        {screen === 'course' && <CourseDetailScreen go={go} user={user} updateUser={updateUser} course={ctx} back={back} />}
+        {screen === 'learn' && <LearnScreen go={go} user={user} updateUser={updateUser} course={ctx} back={back} />}
+        {screen === 'accessibility' && <AccessibilityScreen go={go} user={user} updateUser={updateUser} back={back} />}
+        {screen === 'softprogram' && <SoftProgramScreen go={go} user={user} updateUser={updateUser} back={back} />}
+        {screen === 'techbg' && <TechBgScreen go={go} user={user} updateUser={updateUser} back={back} />}
+      </div>
+      {showNav && <BottomNav tab={tab} setTab={go} user={user} />}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouScent · Video Generator & Player</title>
+    <meta name="description" content="YouScent video generator and player interface.">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,100..1000;1,100..1000&family=Outfit:wght@400..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"DM Sans"', 'sans-serif'],
+                        serif: ['"Outfit"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        primary: '#FFF9F0',
+                        secondary: '#FFFFFF',
+                        'text-primary': '#1B120F',
+                        'text-secondary': '#5E4B43',
+                        accent: '#C64C1B',
+                        'accent-hover': '#A53F16',
+                        'surface-dark': '#1B120F',
+                        border: '#E8DCD4',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-card {
+            background: rgba(27, 18, 15, 0.03);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(198, 76, 27, 0.1);
+            border-radius: 24px;
+        }
+
+        .dark-glass-card {
+            background: rgba(27, 18, 15, 0.85);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+        }
+
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #C64C1B;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .custom-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+
+<body class="bg-primary text-text-primary font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Header Navigation -->
+    <header class="py-6 px-6 sm:px-12 border-b border-border flex justify-between items-center bg-secondary/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="flex items-center gap-6">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="logo.svg" alt="YouScent Logo" class="h-8 w-auto">
+                <span class="font-serif text-lg font-bold tracking-wider text-accent group-hover:opacity-80 transition-opacity">YouScent</span>
+            </a>
+            <span class="text-xs font-mono px-3 py-1 bg-accent/10 text-accent rounded-full font-bold">AI Video Lab</span>
+        </div>
+        <a href="index.html" class="text-xs font-mono uppercase tracking-widest font-bold text-text-secondary hover:text-accent transition-colors">
+            &larr; Back to Case Study
+        </a>
+    </header>
+
+    <main class="max-w-7xl mx-auto w-full px-6 py-12 grid lg:grid-cols-3 gap-8 flex-grow">
+        <!-- Main Video Viewport -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+            <!-- 16:9 Cinema Screen -->
+            <div class="relative w-full aspect-video rounded-3xl overflow-hidden bg-surface-dark shadow-[0_30px_60px_-15px_rgba(27,18,15,0.4)] border border-surface-dark flex flex-col justify-between group">
+                <canvas id="videoCanvas" width="1280" height="720" class="w-full h-full object-cover"></canvas>
+                
+                <!-- Bottom Playback Overlay Controls -->
+                <div class="absolute bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <!-- Progress Bar -->
+                    <div class="w-full h-1 bg-white/20 rounded-full cursor-pointer relative overflow-hidden" id="progressBarContainer">
+                        <div id="progressBar" class="absolute top-0 left-0 h-full bg-accent w-0 transition-all duration-100 ease-out"></div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center text-white text-xs font-mono">
+                        <div class="flex items-center gap-4">
+                            <button id="playBtn" class="p-2 hover:text-accent transition-colors focus:outline-none">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" id="playIcon">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                            </button>
+                            <button id="resetBtn" class="p-2 hover:text-accent transition-colors focus:outline-none">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <span id="timeCounter">00:00 / 01:00</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span id="sceneIndicator" class="px-3 py-1 bg-accent/20 border border-accent/40 rounded-full text-[10px] tracking-wider uppercase font-bold text-accent">Scene 1: Problem</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Initial Play Overlay -->
+                <div id="startOverlay" class="absolute inset-0 bg-surface-dark/95 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8 z-10 transition-opacity duration-500">
+                    <div class="w-20 h-20 rounded-full bg-accent/10 border border-accent/30 flex items-center justify-center mb-6 cursor-pointer hover:scale-105 hover:bg-accent/20 transition-all duration-300 shadow-lg" id="bigPlayBtn">
+                        <svg class="w-10 h-10 text-accent translate-x-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </div>
+                    <h2 class="font-serif text-3xl text-secondary mb-3">YouScent Cinematic Promo</h2>
+                    <p class="text-xs text-white/60 font-mono tracking-widest uppercase max-w-sm mb-6">60-Second Case Study & App Showcase</p>
+                    <div class="flex flex-col gap-2 text-[11px] text-white/40 max-w-md">
+                        <p>🔊 Sound ON is recommended. Uses ambient synthesizer & Text-to-Speech narration.</p>
+                        <p class="italic text-accent">Best experienced on Chrome, Edge, or Safari.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Voice & Ambient Settings -->
+            <div class="glass-card p-6 grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-serif text-lg font-bold mb-4 flex items-center gap-2">
+                        <span>🎙️</span> Voice Customization
+                    </h3>
+                    <div class="flex flex-col gap-3">
+                        <div>
+                            <label class="text-[11px] uppercase tracking-wider font-mono opacity-60 mb-1 block">Select Voice Narrator</label>
+                            <select id="voiceSelect" class="w-full bg-secondary border border-border rounded-lg p-2.5 text-xs font-medium focus:outline-none focus:border-accent"></select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[11px] uppercase tracking-wider font-mono opacity-60 mb-1 block">Pitch</label>
+                                <input type="range" id="pitchSlider" min="0.5" max="1.5" step="0.05" value="1.0" class="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer custom-slider">
+                            </div>
+                            <div>
+                                <label class="text-[11px] uppercase tracking-wider font-mono opacity-60 mb-1 block">Speed</label>
+                                <input type="range" id="rateSlider" min="0.6" max="1.2" step="0.05" value="0.95" class="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer custom-slider">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-serif text-lg font-bold mb-4 flex items-center gap-2">
+                        <span>🎵</span> Soundtrack & Rendering
+                    </h3>
+                    <div class="flex flex-col gap-3">
+                        <div class="flex justify-between items-center py-1">
+                            <span class="text-xs font-mono">Ambient Synth Volume</span>
+                            <input type="range" id="synthVolumeSlider" min="0" max="0.1" step="0.01" value="0.05" class="w-32 h-1 bg-border rounded-lg appearance-none cursor-pointer custom-slider">
+                        </div>
+                        <div class="flex justify-between items-center py-1">
+                            <span class="text-xs font-mono">Voice Volume</span>
+                            <input type="range" id="voiceVolumeSlider" min="0" max="1" step="0.1" value="0.8" class="w-32 h-1 bg-border rounded-lg appearance-none cursor-pointer custom-slider">
+                        </div>
+                        <div class="pt-2">
+                            <button id="recordBtn" class="w-full py-3 bg-accent text-[#FFF9F0] rounded-xl text-xs uppercase tracking-widest font-bold hover:bg-accent-hover transition-colors shadow-md flex items-center justify-center gap-2">
+                                <span class="w-2.5 h-2.5 bg-white rounded-full animate-pulse" id="recordPulse"></span>
+                                <span id="recordBtnText">Render & Export WebM Video</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Script Outline & Active Captions -->
+        <div class="flex flex-col gap-6">
+            <div class="glass-card p-6 flex flex-col gap-4 max-h-[480px] lg:max-h-none overflow-y-auto">
+                <h3 class="font-serif text-xl font-bold border-b border-border pb-3">Video Script Timings</h3>
+                
+                <div class="flex flex-col gap-4 text-xs">
+                    <!-- Scene 1 Text -->
+                    <div id="scriptScene1" class="p-4 rounded-xl border border-transparent transition-all duration-300">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-mono font-bold text-accent">Scene 1 (0:00 - 0:15)</span>
+                            <span class="text-[10px] opacity-50 font-mono">15s</span>
+                        </div>
+                        <p class="leading-relaxed opacity-70" id="textScene1">"The fragrance industry is broken. We’re forced to choose scents based on complex chemical notes we don't understand. The YouScent case study set out to fix this translation void... by designing a journey that bridges the gap between digital interaction and sensory reality."</p>
+                    </div>
+
+                    <!-- Scene 2 Text -->
+                    <div id="scriptScene2" class="p-4 rounded-xl border border-transparent transition-all duration-300">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-mono font-bold text-accent">Scene 2 (0:15 - 0:40)</span>
+                            <span class="text-[10px] opacity-50 font-mono">25s</span>
+                        </div>
+                        <p class="leading-relaxed opacity-70" id="textScene2">"Enter the YouScent App. Instead of asking you to pick between 'floral' or 'woody,' it asks for your story. You simply type in a personal memory or a feeling. Our AI translation engine takes your natural language and instantly maps your memories into a structured, bespoke fragrance composition."</p>
+                    </div>
+
+                    <!-- Scene 3 Text -->
+                    <div id="scriptScene3" class="p-4 rounded-xl border border-transparent transition-all duration-300">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-mono font-bold text-accent">Scene 3 (0:40 - 0:60)</span>
+                            <span class="text-[10px] opacity-50 font-mono">20s</span>
+                        </div>
+                        <p class="leading-relaxed opacity-70" id="textScene3">"No more choice paralysis. No more generic formulas. It’s an olfactory translation of your exact identity. YouScent. Capturing emotion... in a bottle."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 text-center border-t border-border text-xs text-text-secondary">
+        &copy; 2026 YouScent AI Lab. Generated natively with HTML5 Canvas & Web Audio API.
+    </footer>
+
+    <!-- Video Engine Logic -->
+    <script>
+        const canvas = document.getElementById('videoCanvas');
+        const ctx = canvas.getContext('2d');
+        const startOverlay = document.getElementById('startOverlay');
+        const bigPlayBtn = document.getElementById('bigPlayBtn');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const resetBtn = document.getElementById('resetBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressBarContainer = document.getElementById('progressBarContainer');
+        const timeCounter = document.getElementById('timeCounter');
+        const sceneIndicator = document.getElementById('sceneIndicator');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const pitchSlider = document.getElementById('pitchSlider');
+        const rateSlider = document.getElementById('rateSlider');
+        const synthVolumeSlider = document.getElementById('synthVolumeSlider');
+        const voiceVolumeSlider = document.getElementById('voiceVolumeSlider');
+        const recordBtn = document.getElementById('recordBtn');
+        const recordPulse = document.getElementById('recordPulse');
+        const recordBtnText = document.getElementById('recordBtnText');
+
+        // Scene script elements for styling active scenes
+        const scriptScene1 = document.getElementById('scriptScene1');
+        const scriptScene2 = document.getElementById('scriptScene2');
+        const scriptScene3 = document.getElementById('scriptScene3');
+
+        // Video configurations
+        const DURATION = 60; // Total 60 seconds
+        let isPlaying = false;
+        let currentTime = 0;
+        let animationFrameId = null;
+        let lastTime = 0;
+
+        // Assets
+        const images = {
+            scene1: new Image(),
+            scene2: new Image(),
+            scene3: new Image()
+        };
+
+        images.scene1.src = 'mockups/scene1.jpg';
+        images.scene2.src = 'mockups/scene2.jpg';
+        images.scene3.src = 'mockups/scene3.jpg';
+
+        // Particle System
+        const particles = [];
+        function createParticles() {
+            for (let i = 0; i < 40; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 4 + 1,
+                    speedY: -(Math.random() * 1.5 + 0.5),
+                    speedX: (Math.random() - 0.5) * 1,
+                    alpha: Math.random() * 0.5 + 0.2
+                });
+            }
+        }
+        createParticles();
+
+        // Audio Engine (Ambient Synth)
+        let audioCtx = null;
+        let synthNode = null;
+        let filterNode = null;
+        let synthGainNode = null;
+        let currentVoice = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Low pass filter
+            filterNode = audioCtx.createBiquadFilter();
+            filterNode.type = 'lowpass';
+            filterNode.frequency.setValueAtTime(400, audioCtx.currentTime);
+
+            // Synth Gain
+            synthGainNode = audioCtx.createGain();
+            synthGainNode.gain.setValueAtTime(parseFloat(synthVolumeSlider.value), audioCtx.currentTime);
+
+            filterNode.connect(synthGainNode);
+            synthGainNode.connect(audioCtx.destination);
+            
+            // Build simple warm synth chord pad
+            const frequencies = [110, 165, 220, 275]; // A2, E3, A3, C#4
+            synthNode = frequencies.map(freq => {
+                const osc = audioCtx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                const oscGain = audioCtx.createGain();
+                oscGain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                
+                osc.connect(oscGain);
+                oscGain.connect(filterNode);
+                osc.start();
+                return { osc, gain: oscGain };
+            });
+        }
+
+        function playAudio() {
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            if (synthGainNode) {
+                synthGainNode.gain.setTargetAtTime(parseFloat(synthVolumeSlider.value), audioCtx.currentTime, 0.5);
+            }
+        }
+
+        function stopAudio() {
+            if (synthGainNode) {
+                synthGainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+            }
+        }
+
+        // Speech Synthesis Configuration
+        function populateVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            voiceSelect.innerHTML = '';
+            
+            // Find English voices
+            const enVoices = voices.filter(v => v.lang.startsWith('en'));
+            let defaultSelected = false;
+
+            enVoices.forEach((voice) => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                
+                // Try to find a British (en-GB) female voice
+                const isUK = voice.lang.toLowerCase().replace('_', '-').includes('en-gb');
+                const isFemale = voice.name.toLowerCase().includes('female') || 
+                                 voice.name.toLowerCase().includes('hazel') || 
+                                 voice.name.toLowerCase().includes('alice') || 
+                                 voice.name.toLowerCase().includes('susan') || 
+                                 voice.name.toLowerCase().includes('serena') ||
+                                 voice.name.toLowerCase().includes('zira');
+
+                if (isUK && isFemale && !defaultSelected) {
+                    option.selected = true;
+                    defaultSelected = true;
+                }
+                voiceSelect.appendChild(option);
+            });
+
+            // Fallback 1: If no specific British female voice was found, select any British voice
+            if (!defaultSelected) {
+                const gbVoices = enVoices.filter(v => v.lang.toLowerCase().replace('_', '-').includes('en-gb'));
+                if (gbVoices.length > 0) {
+                    for (let i = 0; i < voiceSelect.options.length; i++) {
+                        if (voiceSelect.options[i].value === gbVoices[0].name) {
+                            voiceSelect.options[i].selected = true;
+                            defaultSelected = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Fallback 2: Select first available English voice
+            if (!defaultSelected && voiceSelect.options.length > 0) {
+                voiceSelect.options[0].selected = true;
+            }
+        }
+
+        populateVoices();
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+            window.speechSynthesis.onvoiceschanged = populateVoices;
+        }
+
+        // Synthesis Speech playback control
+        let currentUtterance = null;
+        let lastSpokenScene = 0;
+
+        function speakSceneText(sceneNum) {
+            window.speechSynthesis.cancel();
+            
+            let text = "";
+            if (sceneNum === 1) text = document.getElementById('textScene1').innerText;
+            else if (sceneNum === 2) text = document.getElementById('textScene2').innerText;
+            else if (sceneNum === 3) text = document.getElementById('textScene3').innerText;
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            const selectedVoiceName = voiceSelect.value;
+            const voices = window.speechSynthesis.getVoices();
+            currentUtterance.voice = voices.find(v => v.name === selectedVoiceName);
+            
+            currentUtterance.pitch = parseFloat(pitchSlider.value);
+            currentUtterance.rate = parseFloat(rateSlider.value);
+            currentUtterance.volume = parseFloat(voiceVolumeSlider.value);
+
+            window.speechSynthesis.speak(currentUtterance);
+            lastSpokenScene = sceneNum;
+        }
+
+        // Render Frame Loop
+        function render(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (isPlaying) {
+                currentTime += dt;
+                if (currentTime >= DURATION) {
+                    currentTime = DURATION;
+                    pause();
+                }
+            }
+
+            // Sync HTML interface
+            updateUI();
+
+            // Clear canvas
+            ctx.fillStyle = '#1B120F';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Determine active scene
+            let sceneNum = 1;
+            let sceneTime = currentTime;
+            if (currentTime < 15) {
+                sceneNum = 1;
+                sceneTime = currentTime;
+            } else if (currentTime < 40) {
+                sceneNum = 2;
+                sceneTime = currentTime - 15;
+            } else {
+                sceneNum = 3;
+                sceneTime = currentTime - 40;
+            }
+
+            // Draw current scene image with Ken Burns Pan/Zoom
+            let img = images.scene1;
+            let scale = 1.0;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            if (sceneNum === 1) {
+                img = images.scene1;
+                scale = 1.05 + (sceneTime / 15) * 0.05; // Gentle zoom in
+                offsetY = (sceneTime / 15) * 15; // Slow vertical slide
+            } else if (sceneNum === 2) {
+                img = images.scene2;
+                scale = 1.15 - (sceneTime / 25) * 0.08; // Gentle zoom out
+                offsetX = -(sceneTime / 25) * 20; // Horizontal pan
+            } else {
+                img = images.scene3;
+                scale = 1.0 + (sceneTime / 20) * 0.06; // Slow zoom in
+            }
+
+            if (img.complete) {
+                const w = canvas.width * scale;
+                const h = canvas.height * scale;
+                const x = (canvas.width - w) / 2 + offsetX;
+                const y = (canvas.height - h) / 2 + offsetY;
+                ctx.drawImage(img, x, y, w, h);
+            }
+
+            // Overlay subtle dark gradient on top
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, 'rgba(27, 18, 15, 0.4)');
+            gradient.addColorStop(0.7, 'rgba(27, 18, 15, 0.2)');
+            gradient.addColorStop(1, 'rgba(27, 18, 15, 0.85)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw glowing amber particles
+            particles.forEach(p => {
+                p.y += p.speedY;
+                p.x += p.speedX;
+                if (p.y < 0) p.y = canvas.height;
+                if (p.x < 0 || p.x > canvas.width) p.x = Math.random() * canvas.width;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(198, 76, 27, ${p.alpha})`; // Accent color (amber)
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#C64C1B';
+                ctx.fill();
+                ctx.shadowBlur = 0; // reset
+            });
+
+            // Text Overlays
+            ctx.fillStyle = '#FFFFFF';
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.textAlign = 'center';
+
+            if (sceneNum === 1) {
+                // Headline
+                ctx.font = 'bold 36px Outfit';
+                ctx.fillText('The Fragrance Industry is Broken', canvas.width / 2, canvas.height - 180);
+                
+                // Caption
+                ctx.font = '22px DM Sans';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.fillText('60% of traditional scent discovery results in abandonment.', canvas.width / 2, canvas.height - 120);
+            } else if (sceneNum === 2) {
+                // Headline
+                ctx.font = 'bold 36px Outfit';
+                ctx.fillText('Translating Story to Aroma', canvas.width / 2, canvas.height - 180);
+                
+                // Caption
+                ctx.font = '22px DM Sans';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.fillText('"Rain on a Thursday morning in November..."', canvas.width / 2, canvas.height - 120);
+            } else {
+                // Headline
+                ctx.font = 'bold 36px Outfit';
+                ctx.fillText('Capturing Emotion in a Bottle', canvas.width / 2, canvas.height - 180);
+                
+                // Caption
+                ctx.font = '22px DM Sans';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                ctx.fillText('Bespoke custom scent profile created by AI.', canvas.width / 2, canvas.height - 120);
+            }
+
+            // Draw branding watermark
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.font = 'bold 14px JetBrains Mono';
+            ctx.textAlign = 'right';
+            ctx.fillText('YouScent AI Lab', canvas.width - 40, 50);
+
+            ctx.shadowBlur = 0;
+
+            // Trigger TTS spoken narration if scene switched
+            if (isPlaying && lastSpokenScene !== sceneNum) {
+                speakSceneText(sceneNum);
+            }
+
+            animationFrameId = requestAnimationFrame(render);
+        }
+
+        // Play/Pause controls
+        function play() {
+            initAudio();
+            playAudio();
+            isPlaying = true;
+            playIcon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>`; // Pause Icon
+            lastTime = 0;
+            if (!animationFrameId) {
+                animationFrameId = requestAnimationFrame(render);
+            }
+        }
+
+        function pause() {
+            stopAudio();
+            window.speechSynthesis.cancel();
+            isPlaying = false;
+            playIcon.innerHTML = `<path d="M8 5v14l11-7z"/>`; // Play Icon
+            lastSpokenScene = 0;
+        }
+
+        function reset() {
+            pause();
+            currentTime = 0;
+            lastSpokenScene = 0;
+            updateUI();
+            
+            // Draw clean initial frame
+            setTimeout(() => {
+                render(0);
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }, 50);
+        }
+
+        function updateUI() {
+            const progressPercent = (currentTime / DURATION) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+
+            const formatTime = (secs) => {
+                const m = Math.floor(secs / 60).toString().padStart(2, '0');
+                const s = Math.floor(secs % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            };
+            timeCounter.innerText = `${formatTime(currentTime)} / 01:00`;
+
+            // Active scene scripts & indicator styling
+            if (currentTime < 15) {
+                sceneIndicator.innerText = "Scene 1: Problem";
+                scriptScene1.classList.add('bg-accent/10', 'border-accent/30');
+                scriptScene2.classList.remove('bg-accent/10', 'border-accent/30');
+                scriptScene3.classList.remove('bg-accent/10', 'border-accent/30');
+            } else if (currentTime < 40) {
+                sceneIndicator.innerText = "Scene 2: Application";
+                scriptScene1.classList.remove('bg-accent/10', 'border-accent/30');
+                scriptScene2.classList.add('bg-accent/10', 'border-accent/30');
+                scriptScene3.classList.remove('bg-accent/10', 'border-accent/30');
+            } else {
+                sceneIndicator.innerText = "Scene 3: Product";
+                scriptScene1.classList.remove('bg-accent/10', 'border-accent/30');
+                scriptScene2.classList.remove('bg-accent/10', 'border-accent/30');
+                scriptScene3.classList.add('bg-accent/10', 'border-accent/30');
+            }
+        }
+
+        // Interactive Event Listeners
+        bigPlayBtn.addEventListener('click', () => {
+            startOverlay.style.opacity = 0;
+            setTimeout(() => startOverlay.style.display = 'none', 500);
+            play();
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) pause();
+            else play();
+        });
+
+        resetBtn.addEventListener('click', reset);
+
+        progressBarContainer.addEventListener('click', (e) => {
+            const rect = progressBarContainer.getBoundingClientRect();
+            const clickPos = (e.clientX - rect.left) / rect.width;
+            currentTime = clickPos * DURATION;
+            lastSpokenScene = 0; // reset speaker check
+            updateUI();
+            if (isPlaying) {
+                // Resume speech for the correct scene
+                let sceneNum = 1;
+                if (currentTime < 15) sceneNum = 1;
+                else if (currentTime < 40) sceneNum = 2;
+                else sceneNum = 3;
+                speakSceneText(sceneNum);
+            }
+        });
+
+        // Sliders updates
+        synthVolumeSlider.addEventListener('input', (e) => {
+            if (synthGainNode) {
+                synthGainNode.gain.setValueAtTime(parseFloat(e.target.value), audioCtx.currentTime);
+            }
+        });
+
+        // Canvas Recording System
+        recordBtn.addEventListener('click', () => {
+            if (isRecording) return;
+            
+            // Setup recording
+            recordedChunks = [];
+            isRecording = true;
+            recordBtn.disabled = true;
+            recordPulse.classList.add('bg-red-500');
+            recordPulse.classList.remove('bg-white');
+            recordBtnText.innerText = "Recording Canvas Stream...";
+
+            reset();
+            
+            // Get Stream from Canvas
+            const stream = canvas.captureStream(30); // 30 fps
+            
+            // Set up MediaRecorder
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm;codecs=vp9'
+            });
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    recordedChunks.push(e.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, {
+                    type: 'video/webm'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'youscent-promo.webm';
+                a.click();
+
+                // Reset UI
+                isRecording = false;
+                recordBtn.disabled = false;
+                recordPulse.classList.remove('bg-red-500');
+                recordPulse.classList.add('bg-white');
+                recordBtnText.innerText = "Render & Export WebM Video";
+                pause();
+            };
+
+            // Start playing & recording
+            setTimeout(() => {
+                play();
+                mediaRecorder.start();
+                
+                // Monitor recording duration
+                const checkEnd = setInterval(() => {
+                    if (currentTime >= DURATION) {
+                        clearInterval(checkEnd);
+                        mediaRecorder.stop();
+                    }
+                }, 500);
+            }, 500);
+        });
+
+        // Initialize first frame
+        window.onload = () => {
+            render(0);
+
+            // Check for embed parameter to simplify styling for iframe integration
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('embed') === 'true') {
+                // Hide header & footer
+                const header = document.querySelector('header');
+                const footer = document.querySelector('footer');
+                if (header) header.style.display = 'none';
+                if (footer) footer.style.display = 'none';
+
+                // Adjust body margin and background
+                document.body.style.background = 'transparent';
+                document.body.style.minHeight = 'auto';
+                document.body.style.padding = '0';
+                document.body.style.margin = '0';
+
+                // Adjust main layout
+                const mainEl = document.querySelector('main');
+                if (mainEl) {
+                    mainEl.className = "w-full h-full p-0 m-0 flex flex-col";
+                }
+
+                // Hide settings panel & script panel
+                const settingsPanel = document.querySelector('.glass-card.p-6.grid');
+                if (settingsPanel) settingsPanel.style.display = 'none';
+
+                const scriptPanel = document.querySelector('main > div.flex.flex-col.gap-6');
+                if (scriptPanel) scriptPanel.style.display = 'none';
+
+                const videoColumn = document.querySelector('.lg\\:col-span-2');
+                if (videoColumn) {
+                    videoColumn.className = "w-full h-full flex flex-col gap-0";
+                }
+
+                // Adjust the viewport container border/shadow
+                const videoContainer = document.querySelector('.relative.w-full.aspect-video');
+                if (videoContainer) {
+                    videoContainer.className = "relative w-full h-full overflow-hidden bg-surface-dark flex flex-col justify-between group";
+                    videoContainer.style.borderRadius = "0px";
+                    videoContainer.style.boxShadow = "none";
+                    videoContainer.style.border = "none";
+                }
+            }
+        };
+
+        // Message listener for iframe control (autoplay when in viewport)
+        window.addEventListener('message', (event) => {
+            if (event.data === 'play') {
+                // Remove play overlay
+                startOverlay.style.opacity = 0;
+                setTimeout(() => startOverlay.style.display = 'none', 500);
+                
+                // Play video if not already playing
+                if (!isPlaying) {
+                    play();
+                }
+            } else if (event.data === 'pause') {
+                if (isPlaying) {
+                    pause();
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

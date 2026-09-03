@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>YouScent AI Lab · Prototype</title>
+    <meta name="description" content="YouScent AI Lab prototype, AI-driven personalized scent recommendations.">
+    <link rel="icon" type="image/jpeg" href="../profile.jpg">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"DM Sans"', 'sans-serif'],
+                        serif: ['"DM Serif Display"', 'serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        accent: '#C8602A',
+                        'accent-light': '#FDF5EC',
+                        'surface-dark': '#1C1C1C',
+                        success: '#5B8C5A',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --ease-spring: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --desktop-content-width: 520px;
+            --desktop-chrome-height: 48px;
+            --desktop-frame-height: 640px;
+        }
+
+        body {
+            background-color: #1C1C1C;
+            color: #FDF5EC;
+            font-family: "DM Sans", sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .noise-overlay {
+            position: fixed;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3%3C/filter%3%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3%3C/svg%3");
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .screen {
+            position: absolute;
+            inset: 0;
+            display: none;
+            padding-top: calc(2rem + var(--safe-top));
+            padding-bottom: calc(2rem + var(--safe-bottom));
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .screen.active {
+            display: flex;
+            animation: screen-in 0.8s var(--ease-smooth) forwards;
+        }
+
+        /* Transition: Slide + Flash */
+        @keyframes screen-in {
+            0% {
+                transform: translateY(20px) scale(0.98);
+                opacity: 0;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .flash-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #C8602A;
+            z-index: 200;
+            transform: scaleX(0);
+            transform-origin: center;
+            pointer-events: none;
+        }
+
+        .flash-active {
+            animation: flash-anim 0.6s ease-in-out;
+        }
+
+        @keyframes flash-anim {
+            0% {
+                transform: scaleX(0);
+                opacity: 0;
+            }
+
+            30% {
+                transform: scaleX(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scaleX(1);
+                opacity: 0;
+            }
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            -webkit-backdrop-filter: blur(24px);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 40px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(200, 96, 42, 0.3), transparent, rgba(255, 255, 255, 0.1));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        /* Interactive Orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.15;
+            pointer-events: none;
+            transition: all 2s var(--ease-smooth);
+        }
+
+        /* Chips */
+        .chip {
+            padding: 0.75rem 1.25rem;
+            border-radius: 1rem;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .chip.active {
+            color: #C8602A;
+            border-color: #C8602A;
+            background: rgba(200, 96, 42, 0.1);
+            box-shadow: 0 0 20px rgba(200, 96, 42, 0.1);
+        }
+
+        input[id="memory-text"] {
+            background: rgba(255, 255, 255, 0.03);
+            color: #FDF5EC;
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Custom Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 9999px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 9999px;
+            background: #C8602A;
+            border: 4px solid #1C1C1C;
+            margin-top: -10px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 20px rgba(200, 96, 42, 0.5);
+            cursor: pointer;
+        }
+
+        /* Pyramid */
+        .pyramid-line {
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        /* Staggered Entrance */
+        .stagger>* {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .active .stagger>*:nth-child(1) {
+            animation: slide-up 0.5s 0.2s forwards;
+        }
+
+        .active .stagger>*:nth-child(2) {
+            animation: slide-up 0.5s 0.3s forwards;
+        }
+
+        .active .stagger>*:nth-child(3) {
+            animation: slide-up 0.5s 0.4s forwards;
+        }
+
+        .active .stagger>*:nth-child(4) {
+            animation: slide-up 0.5s 0.5s forwards;
+        }
+
+        .active .stagger>*:nth-child(5) {
+            animation: slide-up 0.5s 0.6s forwards;
+        }
+
+        @keyframes slide-up {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Progress Ring */
+        .ring-path {
+            stroke-dasharray: 283;
+            stroke-dashoffset: 283;
+            transition: stroke-dashoffset 2s linear;
+        }
+
+        /* Typography spacing */
+        .brand-text {
+            letter-spacing: -0.05em;
+        }
+
+        /* === DEVICE SWITCHER === */
+
+        /* The outer shell that wraps <main> */
+        #device-frame {
+            position: relative;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ─── PHONE MODE (default) ─── */
+        body.device-phone #device-frame {
+            width: 390px;
+            height: 844px;
+            border-radius: 54px;
+            border: 8px solid rgba(255, 255, 255, 0.08);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.04),
+                0 40px 120px rgba(0, 0, 0, 0.8),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+            background: #1C1C1C;
+        }
+
+        /* Phone mode — show notch and home, hide chrome */
+        body.device-phone #device-notch {
+            opacity: 1;
+            pointer-events: auto;
+            max-height: 36px;
+        }
+
+        body.device-phone #device-home {
+            opacity: 1;
+            pointer-events: auto;
+            max-height: 28px;
+        }
+
+        /* ─── DESKTOP MODE ─── */
+        body.device-desktop #device-frame {
+            width: min(960px, 92vw);
+            height: var(--desktop-frame-height);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.04),
+                0 40px 120px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+            background: #1C1C1C;
+        }
+
+        body.device-desktop #device-browser-chrome {
+            opacity: 1;
+            pointer-events: auto;
+            max-height: 48px;
+        }
+
+        /* In desktop mode the <main> fills the remaining height */
+        body.device-desktop main {
+            max-width: 100%;
+            height: calc(var(--desktop-frame-height) - var(--desktop-chrome-height));
+            padding: 0 3rem;
+            transition: padding 0.4s 0.1s var(--ease-smooth), height 0.4s 0.1s var(--ease-smooth);
+        }
+
+        body.device-desktop .screen {
+            padding-top: 1.5rem;
+            padding-bottom: 1.5rem;
+            padding-left: 0;
+            padding-right: 0;
+            align-items: center;
+        }
+
+        body.device-desktop .screen>* {
+            width: 100%;
+            max-width: var(--desktop-content-width);
+        }
+
+        body.device-desktop .screen .glass-panel {
+            padding: 2rem 2.5rem;
+        }
+
+        body.device-desktop .screen .glass-panel>* {
+            margin-bottom: 1.5rem;
+        }
+
+        body.device-desktop .screen .glass-panel>*:last-child {
+            margin-bottom: 0;
+        }
+
+        body.device-desktop header {
+            justify-content: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 0 3rem;
+        }
+
+        body.device-desktop header>* {
+            flex-shrink: 0;
+        }
+
+        body.device-desktop header a:first-child {
+            margin-right: auto;
+        }
+
+        body.device-desktop header #screen-counter {
+            margin-left: auto;
+        }
+
+        /* In phone mode, <main> fills the remaining height */
+        body.device-phone main {
+            flex: 1;
+            max-width: 100%;
+            height: 0;
+            padding: 0 1.25rem;
+            transition: padding 0.4s 0.1s var(--ease-smooth);
+        }
+
+        /* Notch + home bar base state */
+        #device-notch {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 36px;
+            background: #1C1C1C;
+            position: relative;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            max-height: 0;
+            transition: opacity 0.3s var(--ease-smooth), max-height 0.4s var(--ease-smooth);
+        }
+
+        #device-home {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 28px;
+            background: #1C1C1C;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            max-height: 0;
+            transition: opacity 0.3s var(--ease-smooth), max-height 0.4s var(--ease-smooth);
+        }
+
+        #device-home-bar {
+            width: 120px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 9999px;
+        }
+
+        /* Browser chrome base state */
+        #device-browser-chrome {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            height: var(--desktop-chrome-height);
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0 16px;
+            flex-shrink: 0;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            max-height: 0;
+            transition: opacity 0.3s var(--ease-smooth), max-height 0.4s var(--ease-smooth);
+        }
+
+        /* Switcher pill */
+        #device-switcher {
+            position: fixed;
+            top: 24px;
+            bottom: auto;
+            right: 24px;
+            left: auto;
+            transform: none;
+            z-index: 300;
+            display: flex;
+            align-items: center;
+            background: rgba(15, 15, 15, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 9999px;
+            padding: 5px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        #device-switcher::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            bottom: 5px;
+            left: 5px;
+            width: calc(50% - 5px);
+            background: linear-gradient(135deg, #E2723A, #C8602A);
+            border-radius: 9999px;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 0;
+            box-shadow: 0 4px 12px rgba(200, 96, 42, 0.4);
+        }
+
+        body.device-phone #device-switcher::before {
+            transform: translateX(0);
+        }
+
+        body.device-desktop #device-switcher::before {
+            transform: translateX(100%);
+        }
+
+        body.device-phone #device-switcher {
+            top: 16px;
+            right: 16px;
+        }
+
+        body.device-desktop #device-switcher {
+            top: 24px;
+            right: 24px;
+        }
+
+        .switcher-btn {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 24px;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.4);
+            transition: color 0.3s ease;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            min-width: 120px;
+        }
+
+        .switcher-btn:hover {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .switcher-btn.active {
+            color: #ffffff;
+        }
+
+        .switcher-btn svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .switcher-btn.active svg {
+            transform: scale(1.1);
+        }
+
+        /* Learn Term Tooltips */
+        .learn-term {
+            position: relative;
+            border-bottom: 1px dashed rgba(253, 245, 236, 0.3);
+            cursor: help;
+            pointer-events: auto;
+            transition: border-color 0.2s;
+        }
+
+        .learn-term:hover {
+            border-color: rgba(200, 96, 42, 0.6);
+        }
+
+        .learn-term::after {
+            content: '·';
+            position: relative;
+            margin-left: 0.15em;
+            font-size: 0.7em;
+            vertical-align: super;
+            opacity: 0.4;
+        }
+
+        .learn-pop {
+            position: fixed;
+            background: rgba(28, 28, 28, 0.95);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1rem;
+            width: 260px;
+            z-index: 250;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .learn-pop.is-open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .learn-pop-term {
+            font-family: 'DM Serif Display', serif;
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #C8602A;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .learn-pop-short {
+            font-size: 0.8rem;
+            color: #FDF5EC;
+            line-height: 1.4;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .learn-pop-long {
+            font-size: 0.75rem;
+            color: rgba(253, 245, 236, 0.6);
+            line-height: 1.5;
+            font-family: 'JetBrains Mono', monospace;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            margin-bottom: 0.5rem;
+        }
+
+        .learn-pop-long.expanded {
+            max-height: 200px;
+        }
+
+        .learn-pop-toggle {
+            font-size: 0.75rem;
+            color: #C8602A;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: opacity 0.2s;
+        }
+
+        .learn-pop-toggle:hover {
+            opacity: 0.7;
+        }
+
+        @media print {
+            .learn-pop {
+                display: none;
+            }
+        }
+
+        .logo-img {
+            height: 2.25rem;
+            width: auto;
+            object-fit: contain;
+        }
+
+        body.device-desktop .logo-img {
+            height: 2.75rem;
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center device-phone">
+    <div class="noise-overlay"></div>
+
+    <!-- Background Orbs -->
+    <div id="orb-main" class="orb w-[600px] h-[600px] bg-accent top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+    </div>
+    <div id="orb-sec" class="orb w-[400px] h-[400px] bg-purple-900 bottom-[-100px] right-[-100px]"></div>
+
+    <!-- Device Switcher -->
+    <div id="device-switcher">
+        <button class="switcher-btn active" id="btn-phone" onclick="setDevice('phone')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <rect x="5" y="2" width="14" height="20" rx="3" ry="3" />
+                <line x1="12" y1="18" x2="12.01" y2="18" stroke-linecap="round" stroke-width="3" />
+            </svg>
+            Phone
+        </button>
+        <button class="switcher-btn" id="btn-desktop" onclick="setDevice('desktop')">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            Desktop
+        </button>
+    </div>
+
+    <!-- App Container wrapped in Device Frame -->
+    <div id="device-frame" style="display:flex; flex-direction:column;">
+
+        <!-- Flash overlay — now scoped to the device frame -->
+        <div class="flash-overlay" id="flash"></div>
+
+        <!-- Phone notch (visible in phone mode only) -->
+        <div id="device-notch">
+            <div
+                style="width:120px; height:20px; background:rgba(0,0,0,0.6); border-radius:0 0 16px 16px; border:1px solid rgba(255,255,255,0.06); border-top:none;">
+            </div>
+        </div>
+
+        <!-- Browser chrome (visible in desktop mode only) -->
+        <div id="device-browser-chrome">
+            <!-- Traffic lights -->
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+                <div style="width:10px;height:10px;border-radius:50%;background:#FF5F57;"></div>
+                <div style="width:10px;height:10px;border-radius:50%;background:#FFBD2E;"></div>
+                <div style="width:10px;height:10px;border-radius:50%;background:#28CA42;"></div>
+            </div>
+            <!-- URL bar -->
+            <div
+                style="flex:1; max-width:360px; margin:0 auto; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:4px 12px; display:flex; align-items:center; gap:8px;">
+                <svg style="width:10px;height:10px;opacity:0.3;" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    stroke-width="2">
+                    <path d="M12 22s-8-4.5-8-11.8A8 8 0 0112 2a8 8 0 018 8.2c0 7.3-8 11.8-8 11.8z" />
+                    <circle cx="12" cy="10" r="3" />
+                </svg>
+                <span
+                    style="font-family:'JetBrains Mono',monospace; font-size:9px; color:rgba(253,245,236,0.3); letter-spacing:0.05em;">youscent.app
+                    / ai-lab</span>
+            </div>
+        </div>
+
+        <main class="w-full max-w-xl flex flex-col relative">
+
+            <!-- Header -->
+            <header class="h-20 flex items-center justify-between z-50">
+                <a href="index.html"
+                    class="flex items-center gap-2 text-accent-light/40 hover:text-accent transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7">
+                        </path>
+                    </svg>
+                    <span class="text-[9px] uppercase tracking-widest font-bold">Case Study</span>
+                </a>
+                <img src="logo.svg?v=6" alt="YouScent Logo" class="logo-img">
+                <div id="screen-counter" class="text-[9px] font-mono opacity-20 tracking-widest uppercase">01 / 07</div>
+            </header>
+
+            <!-- Screens Content -->
+            <div class="flex-1 relative">
+
+                <!-- 01 Welcome -->
+                <section id="screen-welcome" class="screen active">
+                    <div class="text-center glass-panel p-10 pt-16 flex flex-col items-center stagger">
+                        <div
+                            class="w-20 h-20 rounded-full border border-accent/30 flex items-center justify-center mb-10 relative">
+                            <div class="absolute inset-0 border-t-2 border-accent rounded-full animate-spin"></div>
+                            <svg class="w-8 h-8 text-accent" fill="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8m-1-13h2v6h-2zm0 8h2v2h-2z" />
+                            </svg>
+                        </div>
+                        <h1 class="text-5xl font-serif mb-6 leading-tight">Welcome to the <br /><span
+                                class="italic text-accent">AI Scent Lab</span></h1>
+                        <p class="text-sm text-accent-light/60 mb-12 max-w-[280px]">We translate your narrative into a
+                            molecular formula. Ready to begin?</p>
+
+                        <div class="flex gap-2 mb-12">
+                            <div class="h-1 w-8 bg-accent rounded-full"></div>
+                            <div class="h-1 w-2 bg-white/10 rounded-full"></div>
+                            <div class="h-1 w-2 bg-white/10 rounded-full"></div>
+                        </div>
+
+                        <button onclick="nextScreen()"
+                            class="w-full py-5 bg-accent text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] shadow-2xl hover:brightness-110 transition-all active:scale-[0.98]">
+                            Design Your Scent
+                        </button>
+
+                        <div class="mt-8 text-[9px] uppercase tracking-widest opacity-20 font-bold">MPE Framework v2.4
+                            (Beta)</div>
+                    </div>
+                </section>
+
+                <!-- 02 Emotions -->
+                <section id="screen-emotions" class="screen">
+                    <div class="w-full space-y-8 stagger">
+                        <div class="text-center">
+                            <span class="text-accent text-[9px] uppercase tracking-[0.4em] font-bold block mb-4">Step
+                                01</span>
+                            <h2 class="text-4xl font-serif">Select your <span class="italic">current</span> state.</h2>
+                            <p class="text-xs text-accent-light/40 mt-4">Pick at least 3 emotional anchors.</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <button class="chip" onclick="toggleChip(this, 'Calm')">
+                                <span class="w-2 h-2 rounded-full border border-white/20"></span>
+                                Calm
+                            </button>
+                            <button class="chip" onclick="toggleChip(this, 'Nostalgic')">
+                                <span class="w-2 h-2 rounded-full border border-white/20"></span>
+                                Nostalgic
+                            </button>
+                            <button class="chip" onclick="toggleChip(this, 'Grounded')">
+                                <span class="w-2 h-2 rounded-full border border-white/20"></span>
+                                Grounded
+                            </button>
+                            <button class="chip" onclick="toggleChip(this, 'Playful')">
+                                <span class="w-2 h-2 rounded-full border border-white/20"></span>
+                                Playful
+                            </button>
+                            <button class="chip" onclick="toggleChip(this, 'Shadowy')">
+                                <span class="w-2 h-2 rounded-full border border-white/20"></span>
+                                Shadowy
+                            </button>
+                            <button class="chip" onclick="toggleChip(this, 'Ethereal')">
+                                <span class="w-2 h-2 rounded-full border border-white/20"></span>
+                                Ethereal
+                            </button>
+                            <button class="chip" onclick="toggleChip(this, 'Bold')">
+                                <span class="w-2 h-2 rounded-full border border-white/20"></span>
+                                Bold
+                            </button>
+                            <button class="chip" onclick="toggleChip(this, 'Tender')">
+                                <span class="w-2 h-2 rounded-full border border-white/20"></span>
+                                Tender
+                            </button>
+                        </div>
+
+                        <div class="glass-panel p-6 border-white/5 text-center transition-all opacity-0"
+                            id="emotion-next-box">
+                            <span id="emotion-count" class="text-[10px] font-mono block mb-4">0 / 3 selected</span>
+                            <button onclick="nextScreen()"
+                                class="w-full py-4 bg-accent text-white rounded-xl text-[10px] uppercase font-bold tracking-widest">Proceed</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 03 Memory -->
+                <section id="screen-memory" class="screen">
+                    <div class="w-full space-y-8 stagger">
+                        <div class="text-center">
+                            <span class="text-accent text-[9px] uppercase tracking-[0.4em] font-bold block mb-4">Step
+                                02</span>
+                            <h2 class="text-4xl font-serif">Tell us a <span class="italic">story</span>.</h2>
+                            <p class="text-xs text-accent-light/40 mt-4">A place, a person, or a specific moment in
+                                time.</p>
+                        </div>
+
+                        <div class="relative group">
+                            <div
+                                class="absolute inset-y-0 left-0 w-1 bg-accent/30 group-focus-within:bg-accent transition-colors rounded-full">
+                            </div>
+                            <textarea id="memory-text" oninput="updateCharCount(this)"
+                                placeholder="Describe the scene... 'Rain hitting the warm pavement in Kyoto', 'The cedar shelves in my grandfather's library'..."
+                                class="w-full h-48 bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-sm focus:outline-none focus:border-accent/40 leading-relaxed placeholder:opacity-20"></textarea>
+                            <div id="char-counter" class="absolute bottom-4 right-6 text-[9px] font-mono opacity-20">0 /
+                                400</div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="setPrompt('Spring Rain')"
+                                class="px-4 py-2 border border-white/5 rounded-full text-[9px] uppercase tracking-widest opacity-40 hover:opacity-100 hover:border-accent transition-all">Spring
+                                Rain</button>
+                            <button onclick="setPrompt('Antique Leather')"
+                                class="px-4 py-2 border border-white/5 rounded-full text-[9px] uppercase tracking-widest opacity-40 hover:opacity-100 hover:border-accent transition-all">Antique
+                                Leather</button>
+                            <button onclick="setPrompt('Ocean Mist')"
+                                class="px-4 py-2 border border-white/5 rounded-full text-[9px] uppercase tracking-widest opacity-40 hover:opacity-100 hover:border-accent transition-all">Ocean
+                                Mist</button>
+                            <button onclick="setPrompt('Warm Spices')"
+                                class="px-4 py-2 border border-white/5 rounded-full text-[9px] uppercase tracking-widest opacity-40 hover:opacity-100 hover:border-accent transition-all">Warm
+                                Spices</button>
+                        </div>
+
+                        <button onclick="nextScreen()"
+                            class="w-full py-5 bg-accent text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] mt-12">Capture
+                            Narrative</button>
+                    </div>
+                </section>
+
+                <!-- 04 Personality -->
+                <section id="screen-personality" class="screen">
+                    <div class="w-full space-y-8 stagger">
+                        <div class="text-center">
+                            <span class="text-accent text-[9px] uppercase tracking-[0.4em] font-bold block mb-4">Step
+                                03</span>
+                            <h2 class="text-4xl font-serif">Define your <span class="italic">archetype</span>.</h2>
+                            <p class="text-xs text-accent-light/40 mt-4">How do you wish to project yourself?</p>
+                        </div>
+
+                        <div class="grid gap-4">
+                            <button onclick="selectArchetype(this, 'The Architect')"
+                                class="tilt-card p-6 glass-panel border-white/5 flex items-center justify-between group hover:border-accent/40 hover:bg-white/[0.05] transition-all text-left">
+                                <div style="transform: translateZ(20px)">
+                                    <h4 class="text-lg font-serif mb-1 group-hover:text-accent transition-colors">The
+                                        Architect</h4>
+                                    <p class="text-[10px] opacity-40">Structured, clean, and intentional.</p>
+                                </div>
+                                <div class="text-right" style="transform: translateZ(10px)">
+                                    <span
+                                        class="text-[8px] font-mono uppercase tracking-widest opacity-20 block mb-1">Family</span>
+                                    <span
+                                        class="text-[9px] font-bold text-accent uppercase tracking-widest transition-all scale-tag"><span
+                                            class="learn-term" data-term="woody">Woody</span>/<span class="learn-term"
+                                            data-term="chypre">Chypre</span></span>
+                                </div>
+                            </button>
+                            <button onclick="selectArchetype(this, 'The Nomad')"
+                                class="tilt-card p-6 glass-panel border-white/5 flex items-center justify-between group hover:border-accent/40 hover:bg-white/[0.05] transition-all text-left">
+                                <div style="transform: translateZ(20px)">
+                                    <h4 class="text-lg font-serif mb-1 group-hover:text-accent transition-colors">The
+                                        Nomad</h4>
+                                    <p class="text-[10px] opacity-40">Wild, unpredictable, and raw.</p>
+                                </div>
+                                <div class="text-right" style="transform: translateZ(10px)">
+                                    <span
+                                        class="text-[8px] font-mono uppercase tracking-widest opacity-20 block mb-1">Family</span>
+                                    <span
+                                        class="text-[9px] font-bold text-accent uppercase tracking-widest transition-all scale-tag">Smoky/<span
+                                            class="learn-term" data-term="ozone">Ozone</span></span>
+                                </div>
+                            </button>
+                            <button onclick="selectArchetype(this, 'The Poet')"
+                                class="tilt-card p-6 glass-panel border-white/5 flex items-center justify-between group hover:border-accent/40 hover:bg-white/[0.05] transition-all text-left">
+                                <div style="transform: translateZ(20px)">
+                                    <h4 class="text-lg font-serif mb-1 group-hover:text-accent transition-colors">The
+                                        Poet</h4>
+                                    <p class="text-[10px] opacity-40">Soft, lyrical, and nostalgic.</p>
+                                </div>
+                                <div class="text-right" style="transform: translateZ(10px)">
+                                    <span
+                                        class="text-[8px] font-mono uppercase tracking-widest opacity-20 block mb-1">Family</span>
+                                    <span
+                                        class="text-[9px] font-bold text-accent uppercase tracking-widest transition-all scale-tag">Floral/<span
+                                            class="learn-term" data-term="musk">Musk</span></span>
+                                </div>
+                            </button>
+                            <button onclick="selectArchetype(this, 'The Alchemist')"
+                                class="tilt-card p-6 glass-panel border-white/5 flex items-center justify-between group hover:border-accent/40 hover:bg-white/[0.05] transition-all text-left">
+                                <div style="transform: translateZ(20px)">
+                                    <h4 class="text-lg font-serif mb-1 group-hover:text-accent transition-colors">The
+                                        Alchemist</h4>
+                                    <p class="text-[10px] opacity-40">Rich, deep, and mysterious.</p>
+                                </div>
+                                <div class="text-right" style="transform: translateZ(10px)">
+                                    <span
+                                        class="text-[8px] font-mono uppercase tracking-widest opacity-20 block mb-1">Family</span>
+                                    <span
+                                        class="text-[9px] font-bold text-accent uppercase tracking-widest transition-all scale-tag">Oriental/<span
+                                            class="learn-term" data-term="resin">Resin</span></span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <button onclick="nextScreen()"
+                            class="w-full py-5 bg-accent text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] mt-8">Synthesize
+                            Identity</button>
+                    </div>
+                </section>
+
+                <!-- 05 Projection -->
+                <section id="screen-projection" class="screen">
+                    <div class="w-full space-y-12 stagger relative z-10">
+                        <div class="text-center">
+                            <span class="text-accent text-[9px] uppercase tracking-[0.4em] font-bold block mb-4">Step
+                                04</span>
+                            <h2 class="text-4xl font-serif text-text">Volume of <span class="italic">Presence</span>.
+                            </h2>
+                            <p class="text-xs text-accent-light/40 mt-4">Adjust the <span class="learn-term"
+                                    data-term="sillage">sillage</span> (projection) of your scent.
+                            </p>
+                        </div>
+
+                        <div class="glass-panel p-12 text-center">
+                            <div id="volume-label" class="text-6xl font-serif text-accent mb-4 brand-text">Whisper</div>
+                            <div id="volume-val"
+                                class="text-[10px] font-mono opacity-20 uppercase tracking-[0.4em] mb-12">Intensity: 15%
+                            </div>
+
+                            <div class="relative h-1 w-full mb-12">
+                                <input type="range" min="0" max="100" value="15" oninput="updateProjection(this)"
+                                    class="relative z-10 cursor-pointer">
+                                <div class="absolute top-1/2 left-0 w-full h-[1px] bg-white/5 -translate-y-1/2"></div>
+                            </div>
+
+                            <div class="flex justify-between text-[8px] uppercase tracking-widest opacity-30 font-bold">
+                                <span>Sincere / Intimate</span>
+                                <span>Confident / Radiant</span>
+                            </div>
+                        </div>
+
+                        <button onclick="startGenerating()"
+                            class="w-full py-5 bg-accent text-white rounded-2xl font-bold uppercase tracking-widest text-[11px]">Generate
+                            Formula</button>
+                    </div>
+                </section>
+
+                <!-- 06 Generating -->
+                <section id="screen-generating" class="screen">
+                    <div class="text-center space-y-12 stagger">
+                        <div class="relative w-48 h-48 mx-auto">
+                            <svg class="w-full h-full -rotate-90">
+                                <circle class="text-white/5" stroke-width="2" stroke="currentColor" fill="none" r="90"
+                                    cx="96" cy="96" />
+                                <circle class="text-accent ring-path" stroke-width="2" stroke-linecap="round"
+                                    stroke="currentColor" fill="none" r="90" cx="96" cy="96" id="progress-ring" />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div id="gen-percent" class="text-4xl font-serif">00</div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h2 id="gen-status"
+                                class="text-2xl font-serif italic text-accent transition-all duration-500">Mapping
+                                memory nodes...</h2>
+                            <div class="flex justify-center gap-2">
+                                <div class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"
+                                    style="animation-delay: 0.2s"></div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"
+                                    style="animation-delay: 0.4s"></div>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel p-6 border-white/5 flex flex-wrap gap-2 justify-center max-w-sm mx-auto"
+                            id="gen-pills">
+                            <!-- Pills injected by JS -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 07 Result -->
+                <section id="screen-result" class="screen">
+                    <div class="w-full space-y-8 stagger">
+                        <div class="text-center">
+                            <span class="text-accent text-[9px] uppercase tracking-[0.4em] font-bold block mb-4">Formula
+                                Calculated</span>
+                            <h2 class="text-5xl font-serif mb-2 brand-text" id="final-name">Kyoto Rain</h2>
+                            <p class="text-[10px] uppercase font-mono tracking-widest opacity-30 italic">Personal Batch
+                                N° 2025-01</p>
+                        </div>
+
+                        <div class="glass-panel p-10 pt-16 relative">
+                            <div
+                                class="absolute top-8 right-10 text-[8px] font-mono opacity-20 uppercase tracking-widest">
+                                Olfactive Structure</div>
+                            <!-- Pyramid -->
+                            <div class="space-y-12">
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-6 group cursor-pointer"
+                                        onclick="toggleWhy('top')">
+                                        <div
+                                            class="w-16 h-16 rounded-full border border-accent/20 flex flex-col items-center justify-center shrink-0 group-hover:bg-accent/10 transition-all">
+                                            <span class="text-[8px] opacity-40 uppercase learn-term"
+                                                data-term="top">Top</span>
+                                            <span class="text-xs font-serif text-accent">35%</span>
+                                        </div>
+                                        <div class="flex-1 pb-4 pyramid-line">
+                                            <h4 class="text-lg font-serif" id="res-top">Vetiver & Sea Salt</h4>
+                                            <p class="text-[10px] opacity-40">Initial emotional hook</p>
+                                        </div>
+                                        <svg class="w-4 h-4 opacity-20" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div id="why-top"
+                                        class="hidden pl-22 text-[10px] opacity-40 font-mono leading-relaxed max-w-sm">
+                                        Determined by your primary emotion. This note is the first impression, crafted
+                                        to mirror your current state immediately upon application.
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-6 group cursor-pointer"
+                                        onclick="toggleWhy('heart')">
+                                        <div
+                                            class="w-16 h-16 rounded-full border border-white/10 flex flex-col items-center justify-center shrink-0 group-hover:bg-accent/10 transition-all">
+                                            <span class="text-[8px] opacity-40 uppercase learn-term"
+                                                data-term="heart">Heart</span>
+                                            <span class="text-xs font-serif">45%</span>
+                                        </div>
+                                        <div class="flex-1 pb-4 pyramid-line">
+                                            <h4 class="text-lg font-serif" id="res-heart">Damp Stone & Cedar</h4>
+                                            <p class="text-[10px] opacity-40">The core narrative arc</p>
+                                        </div>
+                                        <svg class="w-4 h-4 opacity-20" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div id="why-heart"
+                                        class="hidden pl-22 text-[10px] opacity-40 font-mono leading-relaxed max-w-sm">
+                                        The heart reflects your narrative story. It bridges the initial hook to the
+                                        lasting base, carrying the weight of your shared memory.
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-6 group cursor-pointer"
+                                        onclick="toggleWhy('base')">
+                                        <div
+                                            class="w-16 h-16 rounded-full border border-white/10 flex flex-col items-center justify-center shrink-0 group-hover:bg-accent/10 transition-all">
+                                            <span class="text-[8px] opacity-40 uppercase learn-term"
+                                                data-term="base">Base</span>
+                                            <span class="text-xs font-serif">20%</span>
+                                        </div>
+                                        <div class="flex-1 pb-4">
+                                            <h4 class="text-lg font-serif" id="res-base">Amber & Musk</h4>
+                                            <p class="text-[10px] opacity-40">Lingering memory trail</p>
+                                        </div>
+                                        <svg class="w-4 h-4 opacity-20" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </div>
+                                    <div id="why-base"
+                                        class="hidden pl-22 text-[10px] opacity-40 font-mono leading-relaxed max-w-sm">
+                                        Rooted in your personality archetype. This provides the density and longevity of
+                                        the fragrance, ensuring it remains as a signature of your identity.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-8 border-l border-accent/40 bg-accent/5 rounded-r-3xl">
+                            <span class="text-[9px] uppercase tracking-widest font-bold text-accent mb-2 block">AI
+                                Reasoning</span>
+                            <p class="text-xs leading-relaxed italic text-accent-light/80" id="res-reasoning">
+                                The smoky cedar base reflects your traditional leanings, while the sea salt top evokes
+                                the 'Kyoto garden' memory narrative you provided.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mt-8">
+                            <button id="save-btn" onclick="saveFormula(this)"
+                                class="py-5 border border-white/10 rounded-2xl text-[10px] uppercase font-bold tracking-widest hover:bg-white/5 transition-all">Save
+                                Formula</button>
+                            <button onclick="window.print()"
+                                class="py-5 bg-accent text-white rounded-2xl text-[10px] uppercase font-bold tracking-widest shadow-xl">Order
+                                Batch</button>
+                        </div>
+
+                        <button onclick="resetApp()"
+                            class="w-full py-4 text-[9px] uppercase tracking-[0.4em] font-bold opacity-30 hover:opacity-100 transition-opacity">Start
+                            New Session</button>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+
+        <!-- Phone home indicator (visible in phone mode only) -->
+        <div id="device-home">
+            <div id="device-home-bar"></div>
+        </div>
+
+    </div>
+
+    <script>
+        let currentScreen = 1;
+        const totalScreens = 7;
+        const selections = {
+            emotions: [],
+            memory: '',
+            personality: '',
+            projection: 15
+        };
+
+        const screens = [
+            'screen-welcome',
+            'screen-emotions',
+            'screen-memory',
+            'screen-personality',
+            'screen-projection',
+            'screen-generating',
+            'screen-result'
+        ];
+
+        const KNOWLEDGE = {
+            sillage: {
+                term: 'Sillage',
+                short: 'The trail your scent leaves behind you.',
+                long: 'From the French word for a ship\'s wake. Measures how far your fragrance projects into the air around you, from intimate (skin-only) to radiant (room-filling).'
+            },
+            chypre: {
+                term: 'Chypre',
+                short: 'Citrus-top, mossy-base structure.',
+                long: 'A classic fragrance family featuring a bright citrus opening and a dry, mossy base with oakmoss or similar earthy accords. Timeless and sophisticated.'
+            },
+            woody: {
+                term: 'Woody',
+                short: 'Warm, dry base notes from wood and resin.',
+                long: 'A fragrance family emphasizing woody materials like cedarwood, sandalwood, or vetiver. Creates a grounded, structured scent with natural warmth.'
+            },
+            ozone: {
+                term: 'Ozone',
+                short: 'Crisp, ozonic, airy notes.',
+                long: 'A modern, airy accord that mimics the clean smell after a rainstorm. Creates an aquatic, fresh impression without moisture.'
+            },
+            musk: {
+                term: 'Musk',
+                short: 'Soft, sensual base notes.',
+                long: 'A tender, skin-close accord that adds softness and longevity to fragrances. Creates an intimate, musky drydown.'
+            },
+            resin: {
+                term: 'Resin',
+                short: 'Rich, dense amber and incense notes.',
+                long: 'A fragrance family featuring amber, incense, resins, and spices. Creates a warm, enveloping, oriental character with depth and mystery.'
+            },
+            top: {
+                term: 'Top Notes',
+                short: 'The initial impression, lasting 5–15 minutes.',
+                long: 'The volatile compounds that evaporate quickly, forming your first impression of a fragrance. They set the tone before the heart notes emerge.'
+            },
+            heart: {
+                term: 'Heart Notes',
+                short: 'The core character, lasting 2–8 hours.',
+                long: 'The emotional center of a fragrance. Appears after the top notes fade and carries the main message of the scent until the base takes over.'
+            },
+            base: {
+                term: 'Base Notes',
+                short: 'The foundation, lasting 6+ hours.',
+                long: 'The deepest layer, anchoring the fragrance with warmth and longevity. Includes amber, musk, wood, and spices that linger on skin.'
+            },
+            vetiver: {
+                term: 'Vetiver',
+                short: 'Earthy, dry grass root note.',
+                long: 'A precious material from vetiver grass roots. Smells grassy, earthy, and slightly smoky. Common in woody and chypre fragrances.'
+            },
+            oud: {
+                term: 'Oud',
+                short: 'Deep, dark, precious resinous note.',
+                long: 'One of the world\'s most coveted ingredients, derived from agarwood. Smells smoky, woody, and intensely complex. Extremely rare and valued.'
+            },
+            accord: {
+                term: 'Accord',
+                short: 'A harmonious blend of fragrance components.',
+                long: 'When multiple fragrance materials work together to create a single coherent smell. Like musical chords, accords are the building blocks of composition.'
+            }
+        };
+
+        function nextScreen() {
+            if (currentScreen >= totalScreens) return;
+
+            // Flash + transition
+            document.getElementById('flash').classList.add('flash-active');
+            setTimeout(() => {
+                document.getElementById('flash').classList.remove('flash-active');
+            }, 600);
+
+            const currentId = screens[currentScreen - 1];
+            const nextId = screens[currentScreen];
+
+            document.getElementById(currentId).classList.remove('active');
+            document.getElementById(currentId).style.display = 'none';
+
+            currentScreen++;
+            const nextEl = document.getElementById(nextId);
+            nextEl.style.display = 'flex';
+            setTimeout(() => nextEl.classList.add('active'), 10);
+
+            document.getElementById('screen-counter').innerText = `0${currentScreen} / 07`;
+        }
+
+        // --- Screen Logic ---
+
+        function toggleChip(el, val) {
+            el.classList.toggle('active');
+            if (el.classList.contains('active')) {
+                selections.emotions.push(val);
+            } else {
+                selections.emotions = selections.emotions.filter(e => e !== val);
+            }
+
+            const count = selections.emotions.length;
+            document.getElementById('emotion-count').innerText = `${count} / 3 selected`;
+
+            if (count >= 3) {
+                document.getElementById('emotion-next-box').classList.add('opacity-100');
+            } else {
+                document.getElementById('emotion-next-box').classList.remove('opacity-100');
+            }
+        }
+
+        function updateCharCount(el) {
+            const count = el.value.length;
+            document.getElementById('char-counter').innerText = `${count} / 400`;
+            selections.memory = el.value;
+        }
+
+        function setPrompt(val) {
+            const el = document.getElementById('memory-text');
+            el.value = val;
+            updateCharCount(el);
+        }
+
+        function selectArchetype(el, val) {
+            document.querySelectorAll('#screen-personality button').forEach(b => b.classList.remove('border-accent', 'bg-accent/5'));
+            el.classList.add('border-accent', 'bg-accent/5');
+            selections.personality = val;
+        }
+
+        function updateProjection(el) {
+            const val = el.value;
+            selections.projection = val;
+            const labels = ['Whisper', 'Intimate', 'Murmur', 'Speak', 'Project', 'Radiate', 'Broadcast'];
+            const index = Math.min(Math.floor(val / 15), labels.length - 1);
+
+            document.getElementById('volume-label').innerText = labels[index];
+            document.getElementById('volume-val').innerText = `Intensity: ${val}%`;
+        }
+
+        function toggleWhy(section) {
+            const el = document.getElementById(`why-${section}`);
+            el.classList.toggle('hidden');
+        }
+
+        function startGenerating() {
+            nextScreen();
+
+            const ring = document.getElementById('progress-ring');
+            const percentEl = document.getElementById('gen-percent');
+            const statusEl = document.getElementById('gen-status');
+            const pills = document.getElementById('gen-pills');
+
+            const statuses = [
+                'Analyzing emotional anchors...',
+                'Parsing narrative memory...',
+                'Weighting personality traits...',
+                'Calculating molecular density...',
+                'Synthesizing final profile...'
+            ];
+
+            const keywords = selections.emotions.concat(['MPE Engine', 'Logic Node', selections.personality]);
+
+            let p = 0;
+            const interval = setInterval(() => {
+                p += 2;
+                percentEl.innerText = p.toString().padStart(2, '0');
+                ring.style.strokeDashoffset = 283 - (283 * p / 100);
+
+                if (p % 20 === 0) {
+                    statusEl.innerText = statuses[p / 20 - 1] || 'Crystallizing...';
+                    // Add a pill
+                    if (keywords[p / 20 - 1]) {
+                        const pill = document.createElement('span');
+                        pill.className = 'px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[8px] uppercase tracking-widest opacity-0 animate-[slide-up_0.5s_forwards]';
+                        pill.innerText = keywords[p / 20 - 1];
+                        pills.appendChild(pill);
+                    }
+                }
+
+                if (p >= 100) {
+                    clearInterval(interval);
+                    setTimeout(prepareResult, 1000);
+                }
+            }, 50);
+        }
+
+        function wrapIngredients(text) {
+            // Wrap known ingredients with learn-term spans
+            const ingredients = ['Vetiver', 'Oud', 'Musk', 'Cedar'];
+            let result = text;
+            ingredients.forEach(ing => {
+                const term = ing.toLowerCase();
+                if (KNOWLEDGE[term]) {
+                    const regex = new RegExp(`\\b${ing}\\b`, 'g');
+                    result = result.replace(regex, `<span class="learn-term" data-term="${term}">${ing}</span>`);
+                }
+            });
+            return result;
+        }
+
+        function prepareResult() {
+            // Formula Logic
+            const formulas = {
+                'The Architect': { name: 'Structured Silence', t: 'Vetiver', h: 'Concrete & Slate', b: 'Santal 33' },
+                'The Nomad': { name: 'Desert Wind', t: 'Sage Brush', h: 'Burnt Cedar', b: 'Gunpowder' },
+                'The Poet': { name: 'Morning Mist', t: 'Neroli', h: 'Iris & Paper', b: 'White Musk' },
+                'The Alchemist': { name: 'Golden Hour', t: 'Bergamot', h: 'Incense', b: 'Oud & Amber' }
+            };
+
+            const res = formulas[selections.personality] || formulas['The Architect'];
+
+            document.getElementById('final-name').innerText = res.name;
+            document.getElementById('res-top').innerHTML = wrapIngredients(res.t) + ' · ' + (selections.emotions[0] || 'Clean');
+            document.getElementById('res-heart').innerHTML = wrapIngredients(res.h) + ' · ' + (selections.emotions[1] || 'Warm');
+            document.getElementById('res-base').innerHTML = wrapIngredients(res.b) + ' · ' + (selections.emotions[2] || 'Base');
+
+            document.getElementById('res-reasoning').innerText = `Your memory of "${selections.memory.substring(0, 30)}..." triggered a high ${res.h} density, while your ${selections.personality} identity profile leaned towards ${res.b}.`;
+
+            nextScreen();
+        }
+
+        function saveFormula(btn) {
+            btn.innerText = 'Saved to Library';
+            btn.classList.add('text-success', 'border-success');
+        }
+
+        function resetApp() {
+            location.reload();
+        }
+
+        // Init counter
+        document.getElementById('screen-counter').innerText = `01 / 07`;
+
+        function setDevice(mode) {
+            const body = document.body;
+            body.classList.remove('device-phone', 'device-desktop');
+            body.classList.add('device-' + mode);
+
+            document.getElementById('btn-phone').classList.toggle('active', mode === 'phone');
+            document.getElementById('btn-desktop').classList.toggle('active', mode === 'desktop');
+        }
+
+        // Learning Service: Tooltip Popover Management
+        let activePopover = null;
+        let hoverTimer = null;
+
+        function cancelDismiss() {
+            if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+        }
+
+        function scheduleDismiss() {
+            cancelDismiss();
+            hoverTimer = setTimeout(dismissPopover, 200);
+        }
+
+        function createPopover(term) {
+            const data = KNOWLEDGE[term];
+            if (!data) return null;
+
+            const popover = document.createElement('div');
+            popover.className = 'learn-pop';
+            popover.style.visibility = 'hidden';
+            popover.innerHTML = `
+                <span class="learn-pop-term">${data.term}</span>
+                <span class="learn-pop-short">${data.short}</span>
+                <div class="learn-pop-long" id="long-${term}">
+                    ${data.long}
+                </div>
+                <span class="learn-pop-toggle" onclick="toggleLongDef('${term}')">
+                    Read more ►
+                </span>
+            `;
+
+            popover.addEventListener('mouseover', cancelDismiss);
+            popover.addEventListener('mouseout', scheduleDismiss);
+
+            document.querySelector('main').appendChild(popover);
+            return popover;
+        }
+
+        function toggleLongDef(term) {
+            const longEl = document.getElementById(`long-${term}`);
+            if (longEl) {
+                longEl.classList.toggle('expanded');
+                const toggle = event.target;
+                toggle.textContent = longEl.classList.contains('expanded') ? '◄ Less' : 'Read more ►';
+            }
+        }
+
+        function positionPopover(popover, trigger) {
+            const rect = trigger.getBoundingClientRect();
+            const popRect = popover.getBoundingClientRect();
+
+            let top = rect.bottom + 8;
+            let left = rect.left - (popRect.width / 2) + (rect.width / 2);
+
+            // Keep popover in viewport
+            if (left < 10) left = 10;
+            if (left + popRect.width + 10 > window.innerWidth) {
+                left = window.innerWidth - popRect.width - 10;
+            }
+            if (top + popRect.height > window.innerHeight) {
+                top = rect.top - popRect.height - 8;
+            }
+
+            popover.style.top = top + 'px';
+            popover.style.left = left + 'px';
+        }
+
+        function showPopover(trigger) {
+            const term = trigger.getAttribute('data-term');
+            if (!term) return;
+
+            cancelDismiss();
+            dismissPopover();
+
+            let popover = document.querySelector(`.learn-pop[data-term="${term}"]`);
+            if (!popover) {
+                popover = createPopover(term);
+                popover.setAttribute('data-term', term);
+            }
+
+            if (popover) {
+                activePopover = { element: popover, trigger };
+                positionPopover(popover, trigger);
+                popover.style.visibility = 'visible';
+                popover.classList.add('is-open');
+            }
+        }
+
+        function dismissPopover() {
+            cancelDismiss();
+            if (activePopover) {
+                activePopover.element.classList.remove('is-open');
+                activePopover.element.style.visibility = 'hidden';
+                activePopover = null;
+            }
+        }
+
+        function initLearnTerms() {
+            const main = document.querySelector('main');
+            if (!main) return;
+
+            // Delegated listeners for learn-term elements (capture phase prevents parent onclick from firing)
+            main.addEventListener('click', (e) => {
+                const trigger = e.target.closest('.learn-term');
+                if (!trigger) return;
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                if (activePopover && activePopover.trigger === trigger) {
+                    dismissPopover();
+                } else {
+                    showPopover(trigger);
+                }
+            }, true);
+
+            main.addEventListener('mouseover', (e) => {
+                const trigger = e.target.closest('.learn-term');
+                if (trigger) {
+                    cancelDismiss();
+                    if (!activePopover || activePopover.trigger !== trigger) {
+                        showPopover(trigger);
+                    }
+                }
+            });
+
+            main.addEventListener('mouseout', (e) => {
+                const trigger = e.target.closest('.learn-term');
+                if (trigger) {
+                    scheduleDismiss();
+                }
+            });
+
+            // Close popover on outside click
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.learn-term') && !e.target.closest('.learn-pop')) {
+                    dismissPopover();
+                }
+            });
+
+            // Close popover on Esc key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    dismissPopover();
+                }
+            });
+        }
+
+        // Initialize learning service on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initLearnTerms);
+        } else {
+            initLearnTerms();
+        }
+    </script>
+</body>
+
+</html>

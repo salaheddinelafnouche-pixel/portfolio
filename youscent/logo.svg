@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <!-- 
+    YouScent Logo Redesign based on User Assessment
+    - "Users don't understand chemical concentrations (EDT/EDP) or evaporation rates" -> Removed all lab/chemistry/formula iconography.
+    - "Tactile, organic selection anchors" -> Soft, continuous, fluid teardrop geometry.
+    - "Volume of Presence metric" -> Expanding concentric rings radiating spatial impact.
+    - "Identity Curation & Personal Journey" -> The organic, warm, grounded core resting at the center.
+    - "Luxury editorial tone" -> Monoline minimalism using precise UI palette.
+  -->
+  <g transform="translate(0, -10)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <!-- Volume of Presence: Outer Aura -->
+    <path d="M 250 140 
+             C 100 140, 50 250, 50 350 
+             C 50 450, 150 490, 250 490 
+             C 350 490, 450 450, 450 350 
+             C 450 250, 400 140, 250 140" 
+          stroke="#C64C1B" stroke-width="4" opacity="0.3" />
+          
+    <!-- Volume of Presence: Middle Aura -->
+    <path d="M 250 180 
+             C 140 180, 90 270, 90 360 
+             C 90 440, 170 470, 250 470 
+             C 330 470, 410 440, 410 360 
+             C 410 270, 360 180, 250 180" 
+          stroke="#C64C1B" stroke-width="6" opacity="0.6" />
+          
+    <!-- The Primary Vessel (Organic, Non-rigid) -->
+    <path d="M 250 220 
+             C 170 220, 130 290, 130 370 
+             C 130 430, 190 450, 250 450 
+             C 310 450, 370 430, 370 370 
+             C 370 290, 330 220, 250 220" 
+          stroke="#C64C1B" stroke-width="12" />
+          
+    <!-- Organic Neck integrating seamlessly -->
+    <path d="M 230 225 C 230 150, 250 120, 250 120 C 250 120, 270 150, 270 225" stroke="#C64C1B" stroke-width="12" />
+    
+    <!-- Soft, tactile nozzle cap -->
+    <rect x="235" y="80" width="30" height="40" fill="#C64C1B" rx="15" />
+
+    <!-- The Tactile Core (Identity Curation) -->
+    <path d="M 250 300 
+             C 220 300, 200 330, 200 370 
+             C 200 410, 220 420, 250 420 
+             C 280 420, 300 410, 300 370 
+             C 300 330, 280 300, 250 300 Z" 
+          fill="#C64C1B" stroke="none" />
+          
+    <!-- Inner depth of the core -->
+    <path d="M 250 320 
+             C 235 320, 220 340, 220 370 
+             C 220 395, 235 400, 250 400 
+             C 265 400, 280 395, 280 370 
+             C 280 340, 265 320, 250 320 Z" 
+          fill="#FFF9F0" stroke="none" opacity="0.9" />
+  </g>
+</svg>
