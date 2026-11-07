@@ -6,6 +6,7 @@ ErrorDocument 404 /404.html
   # Homepage Link discovery (RFC 8288)
   <If "%{REQUEST_URI} == '/' || %{REQUEST_URI} == '/index.html'">
     Header set Link "</llms.txt>; rel=\"describedby\", </index.md>; rel=\"alternate\"; type=\"text/markdown\", </.well-known/mcp/server-card.json>; rel=\"describedby\"; type=\"application/json\""
+    Header append Vary Accept
   </If>
 </IfModule>
 
@@ -20,19 +21,18 @@ ErrorDocument 404 /404.html
   RewriteEngine On
   RewriteBase /
 
-  # Do not rewrite real files or directories
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d [OR]
-  RewriteCond %{REQUEST_FILENAME} -l
-  RewriteRule ^ - [L]
-
-  # Serve Markdown when agents ask for it on the homepage
+  # Serve Markdown when agents ask for it on the homepage (before file/dir passthrough)
   RewriteCond %{HTTP:Accept} text/markdown [NC]
   RewriteRule ^$ /index.md [L]
 
   RewriteCond %{HTTP:Accept} text/markdown [NC]
   RewriteRule ^index\.html$ /index.md [L]
+
+  # Do not rewrite real files or directories
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d [OR]
+  RewriteCond %{REQUEST_FILENAME} -l
+  RewriteRule ^ - [L]
 
   # Allowlisted SPA routes → React shell
   RewriteRule ^(projects|about|contact|terms|resume|youscent|youscent-saas|tech4u)/?$ /index.html [L]
