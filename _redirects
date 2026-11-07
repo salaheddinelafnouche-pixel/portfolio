@@ -1,1 +1,13 @@
-/*    /index.html   200
+# Known SPA routes → index.html
+/                 /index.html   200
+/projects         /index.html   200
+/about            /index.html   200
+/contact          /index.html   200
+/terms            /index.html   200
+/resume           /index.html   200
+/youscent         /index.html   200
+/youscent-saas    /index.html   200
+/tech4u           /index.html   200
+
+# Real 404 for everything else (static files still served first)
+/*                /404.html     404

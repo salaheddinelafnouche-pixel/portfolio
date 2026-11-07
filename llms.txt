@@ -1,0 +1,31 @@
+# Salaheddine Lafnouche
+
+> Product Designer based in Khemisset, Morocco. Designs accessible, user-centred digital experiences for AI and UX ecosystems. Google UX Design certified. Open to product design roles and 0-to-1 product work.
+
+## Pages
+
+- [Home](https://salaheddinelafnouche.com/): Portfolio homepage and featured case studies
+- [Projects](https://salaheddinelafnouche.com/projects): Full case study index
+- [About](https://salaheddinelafnouche.com/about): Background, skills, certifications
+- [Contact](https://salaheddinelafnouche.com/contact): Inquiry form and contact details
+- [Resume](https://salaheddinelafnouche.com/resume): Printable resume
+- [Terms](https://salaheddinelafnouche.com/terms): Terms of use and privacy summary
+
+## Case studies
+
+- [YouScent SaaS](https://salaheddinelafnouche.com/youscent-saas): Lead Product Designer — fragrance atelier SaaS, SUS ≥ 80 usability bar
+- [YouScent](https://salaheddinelafnouche.com/youscent): Product Designer — emotion-led AI fragrance flow, 73% first-gen conversion
+- [Tech4U](https://salaheddinelafnouche.com/tech4u): Founder & Lead UX — inclusive ed-tech with WCAG 2.1 AA adaptive pacing
+
+## Contact
+
+- Email: [portfolio@salaheddinelafnouche.com](mailto:portfolio@salaheddinelafnouche.com)
+- Phone: [+212 629 335 434](tel:+212629335434)
+- LinkedIn: [salah-eddine-lafnouche](https://www.linkedin.com/in/salah-eddine-lafnouche-66881525b)
+
+## Agent resources
+
+- [llms.txt](https://salaheddinelafnouche.com/llms.txt)
+- [Homepage (Markdown)](https://salaheddinelafnouche.com/index.md)
+- [Sitemap](https://salaheddinelafnouche.com/sitemap.xml)
+- [MCP Server Card](https://salaheddinelafnouche.com/.well-known/mcp/server-card.json)

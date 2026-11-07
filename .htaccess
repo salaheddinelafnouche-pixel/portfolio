@@ -1,9 +1,42 @@
+# Agent-ready hosting: real files first, allowlisted SPA routes, true 404s
+
+ErrorDocument 404 /404.html
+
+<IfModule mod_headers.c>
+  # Homepage Link discovery (RFC 8288)
+  <If "%{REQUEST_URI} == '/' || %{REQUEST_URI} == '/index.html'">
+    Header set Link "</llms.txt>; rel=\"describedby\", </index.md>; rel=\"alternate\"; type=\"text/markdown\", </.well-known/mcp/server-card.json>; rel=\"describedby\"; type=\"application/json\""
+  </If>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType text/plain .txt
+  AddType text/markdown .md
+  AddType application/json .json
+  AddType application/xml .xml
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Do not rewrite real files or directories
   RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_FILENAME} !-l
-  RewriteRule . /index.html [L]
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d [OR]
+  RewriteCond %{REQUEST_FILENAME} -l
+  RewriteRule ^ - [L]
+
+  # Serve Markdown when agents ask for it on the homepage
+  RewriteCond %{HTTP:Accept} text/markdown [NC]
+  RewriteRule ^$ /index.md [L]
+
+  RewriteCond %{HTTP:Accept} text/markdown [NC]
+  RewriteRule ^index\.html$ /index.md [L]
+
+  # Allowlisted SPA routes → React shell
+  RewriteRule ^(projects|about|contact|terms|resume|youscent|youscent-saas|tech4u)/?$ /index.html [L]
+
+  # Everything else is a real 404
+  RewriteRule ^ - [R=404,L]
 </IfModule>

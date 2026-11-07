@@ -1,0 +1,54 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
+  "version": "1.0",
+  "protocolVersion": "2025-06-18",
+  "serverInfo": {
+    "name": "salaheddinelafnouche-portfolio",
+    "title": "Salaheddine Lafnouche Portfolio MCP",
+    "version": "1.0.0"
+  },
+  "description": "MCP tools for Salaheddine Lafnouche's product design portfolio: profile, projects, and contact details.",
+  "documentationUrl": "https://salaheddinelafnouche.com/llms.txt",
+  "transport": {
+    "type": "streamable-http",
+    "endpoint": "https://salaheddinelafnouche.com/api/mcp"
+  },
+  "capabilities": {
+    "tools": {}
+  },
+  "authentication": {
+    "required": false
+  },
+  "tools": [
+    {
+      "name": "get_profile",
+      "title": "Get profile",
+      "description": "Returns Salaheddine Lafnouche's name, role, location, and profile links.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list_projects",
+      "title": "List projects",
+      "description": "Returns featured case studies with summaries and URLs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_contact",
+      "title": "Get contact",
+      "description": "Returns email, phone, and contact page URL.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ]
+}
